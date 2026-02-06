@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a0b2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>GET THE WATER - Reconstructed</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+
+<body>
+  <div id="app">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Game HUD -->
+    <div id="ui-layer">
+      <button id="back-button" style="display: none;">⬅ Menú</button>
+      <div id="score-container" style="display: none;">
+        <div id="drops-score" style="color: #00ffff; margin-right: 15px;">💧 0</div>
+        <div id="score">Altura: 0m</div>
+        <div id="high-score">Record: 0m</div>
+        <button id="mute-button" style="background:none; border:none; font-size: 24px; cursor: pointer;">🔊</button>
+      </div>
+      <div id="milestone-notification" style="display: none;">🏆 ¡100m Alcanzados!</div>
+      <div id="controls-hint" style="display: none;">Manten presionado Izq/Der/Centro para saltar</div>
+    </div>
+
+    <!-- MAIN MENU -->
+    <div id="main-menu" class="menu-screen">
+      <h1 class="game-title">GET THE WATER</h1>
+      <div class="menu-buttons">
+        <button id="btn-continue" class="menu-btn primary" style="display: none;">CONTINUAR</button>
+        <button id="btn-new-game" class="menu-btn">NUEVA PARTIDA</button>
+        <button id="btn-shop" class="menu-btn secondary">TIENDA 🛒</button>
+      </div>
+      <div class="footer">All rights reserved Kathini Games</div>
+    </div>
+
+    <!-- DIFFICULTY MENU -->
+    <div id="difficulty-menu" class="menu-screen" style="display: none;">
+      <h2>SELECCIONA DIFICULTAD</h2>
+      <div class="menu-buttons">
+        <button id="btn-diff-assisted" class="menu-btn primary">ASISTIDO (Con Guía)</button>
+        <button id="btn-diff-extreme" class="menu-btn danger">EXTREMO (Sin Guía)</button>
+        <button id="btn-diff-back" class="menu-btn small">⬅ VOLVER</button>
+      </div>
+    </div>
+
+    <!-- SHOP MENU -->
+    <div id="shop-menu" class="menu-screen" style="display: none;">
+      <div class="shop-header">
+        <button id="btn-shop-back" class="menu-btn small">⬅ VOLVER</button>
+        <h2>TIENDA DE ANIMALES</h2>
+        <div class="shop-wallet">💧 <span id="shop-wallet-amount">0</span></div>
+      </div>
+      <div class="shop-layout">
+        <div id="shop-grid" class="shop-list-sidebar">
+          <!-- Los emojis de los animales se inyectan via JS -->
+        </div>
+        <div id="shop-details" class="shop-details-panel">
+          <div class="empty-selection">SELECCIONA UN ANIMAL</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POWER UP INFO POPUP -->
+    <div id="powerup-popup" class="powerup-popup" style="display: none;">
+      <div class="pu-popup-content">
+        <div id="pu-popup-emoji" class="pu-popup-emoji">🧲</div>
+        <h2 id="pu-popup-name">IMÁN DE GOTAS</h2>
+        <p id="pu-popup-desc">¡Atrae todas las gotas cercanas!</p>
+        <button id="pu-popup-close" class="menu-btn primary">¡ENTENDIDO!</button>
+      </div>
+    </div>
+
+    <!-- ACTIVE POWERUPS UI -->
+    <div id="active-powerups" class="active-powerups-container"></div>
+
+    <!-- VICTORY SCREEN -->
+    <div id="victory-screen" class="menu-screen" style="display: none;">
+      <h1 class="victory-title">🌍 ¡MUNDO RESTAURADO!</h1>
+      <p>Has alcanzado los 10,000m y traído el agua de vuelta.</p>
+      <button id="btn-victory-continue" class="menu-btn primary">VOLVER AL MENÚ</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
