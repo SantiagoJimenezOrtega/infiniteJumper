@@ -4,7 +4,7 @@ export class Background {
     constructor(game) {
         this.game = game;
         this.particles = [];
-        const count = 60;
+        const count = 30; // Reduced from 60
         for (let i = 0; i < count; i++) {
             this.particles.push(this.createParticle());
         }

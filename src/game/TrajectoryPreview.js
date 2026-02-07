@@ -60,8 +60,9 @@ export class TrajectoryPreview {
             // Platform collision prediction
             if (currVY > 0) {
                 let hit = false;
-                for (const p of this.game.world.platforms) {
-                    if (p.active && currX > p.x && currX < p.x + p.width && currY > p.y - 10 && currY < p.y + p.height) {
+                const platformsNearby = this.game.world.platforms.filter(p => p.active && Math.abs(p.y - currY) < 50);
+                for (const p of platformsNearby) {
+                    if (currX > p.x && currX < p.x + p.width && currY > p.y - 10 && currY < p.y + p.height) {
                         points.push({ x: currX, y: currY, landing: true });
                         hit = true;
                         break;
@@ -73,21 +74,9 @@ export class TrajectoryPreview {
 
         if (points.length > 1) {
             ctx.save();
-            ctx.strokeStyle = "#000000";
-            ctx.lineWidth = 6;
-            ctx.setLineDash([8, 8]);
-            ctx.globalAlpha = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-            ctx.stroke();
-
-            ctx.strokeStyle = "#FFFFFF";
-            ctx.lineWidth = 4;
-            ctx.setLineDash([8, 8]);
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#FFFFFF";
-            ctx.globalAlpha = 1;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
             ctx.beginPath();
             ctx.moveTo(points[0].x, points[0].y);
             for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
@@ -95,31 +84,19 @@ export class TrajectoryPreview {
 
             // Decorative dots and indicators
             ctx.setLineDash([]);
-            for (let i = 0; i < points.length; i += 5) {
-                ctx.beginPath();
-                ctx.arc(points[i].x, points[i].y, 3, 0, Math.PI * 2);
+            for (let i = 0; i < points.length; i += 8) {
                 ctx.fillStyle = "#00ffcc";
-                ctx.fill();
+                ctx.fillRect(points[i].x - 2, points[i].y - 2, 4, 4);
             }
 
             for (const p of points) {
                 if (p.bounce) {
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-                    ctx.strokeStyle = "#ffff00";
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    ctx.fillStyle = "rgba(255, 255, 0, 0.3)";
-                    ctx.fill();
+                    ctx.fillStyle = "#ffff00";
+                    ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
                 }
                 if (p.landing) {
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-                    ctx.strokeStyle = "#00ff00";
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    ctx.fillStyle = "rgba(0, 255, 0, 0.3)";
-                    ctx.fill();
+                    ctx.fillStyle = "#00ff00";
+                    ctx.fillRect(p.x - 5, p.y - 5, 10, 10);
                 }
             }
             ctx.restore();

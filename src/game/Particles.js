@@ -5,6 +5,7 @@ export class Particles {
     }
 
     spawn(x, y, color, count = 10) {
+        if (this.particles.length > 150) return; // Cap particles for performance
         for (let i = 0; i < count; i++) {
             this.particles.push({
                 x, y,

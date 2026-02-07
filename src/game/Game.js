@@ -14,7 +14,7 @@ export class Game {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d", { alpha: false }); // Performance: Disable alpha for main canvas
-        this.width = 400; // Logical width
+        this.width = 360; // Tighter logical width for better sizing on mobile
         this.height = 0; // Will be set in resize
         this.scale = 1;
 

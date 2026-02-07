@@ -26,8 +26,6 @@ export class Collectible {
 
         if (this.type === "water") {
             ctx.fillStyle = "#4CC9F0";
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#4CC9F0";
 
             // Draw drop shape
             ctx.beginPath();
@@ -38,7 +36,6 @@ export class Collectible {
 
             // Highlight
             ctx.fillStyle = "#ffffff";
-            ctx.shadowBlur = 0;
             ctx.beginPath();
             ctx.arc(centerX - 4, centerY + 4, 3, 0, Math.PI * 2);
             ctx.fill();
@@ -51,15 +48,12 @@ export class Collectible {
                 ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
                 ctx.strokeStyle = p.color;
                 ctx.lineWidth = 3;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = p.color;
                 ctx.stroke();
 
                 // Symbol (Emoji)
                 ctx.font = "24px Arial";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.shadowBlur = 5;
                 ctx.fillText(p.emoji, centerX, centerY);
             }
         }
