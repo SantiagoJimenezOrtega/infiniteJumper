@@ -12,7 +12,6 @@ export class World {
         this.windTimer = 0;
         this.windStrength = 0.05;
         this.lastPowerUpY = this.highestPoint;
-        this.nextPowerUpThreshold = 250 + Math.random() * 50; // Distance to next spawn check in meters
 
         // Ground platform
         this.platforms.push({
@@ -57,34 +56,34 @@ export class World {
                 const dropX = x + pWidth / 2 - 20;
                 const dropY = y - 50;
 
-                // height is (game.height - y) / 10
-                // We want to check every ~250-300m
+                // Power-up spawn logic
                 const distanceSinceLastPU = Math.abs(this.lastPowerUpY - y) / 10;
+                let spawnedPowerUp = false;
 
-                if (distanceSinceLastPU >= this.nextPowerUpThreshold) {
-                    this.lastPowerUpY = y;
-                    this.nextPowerUpThreshold = 250 + Math.random() * 50;
+                // Only consider spawning PU if we are past a minimum distance (to limit max 2 per 300m)
+                // and not while jetpack is active.
+                const player = this.game.player;
+                const activePUs = (player && player.activePowerUps) ? player.activePowerUps : {};
 
-                    // 50% chance for a powerup
-                    const player = this.game.player;
-                    const activePUs = (player && player.activePowerUps) ? player.activePowerUps : {};
+                if (distanceSinceLastPU >= 120 && !activePUs['jetpack']) {
+                    // If we reached the 300m limit, force spawn. Otherwise, use a chance.
+                    const forceSpawn = distanceSinceLastPU >= 300;
+                    const chanceSpawn = Math.random() < 0.2; // 20% chance per platform after 120m
 
-                    if (Math.random() < 0.5 && !activePUs['jetpack']) {
-                        // Filter out currently active powerups
+                    if (forceSpawn || chanceSpawn) {
                         const availableTypes = Object.keys(POWER_UPS).filter(key => !activePUs[POWER_UPS[key].id]);
 
                         if (availableTypes.length > 0) {
                             const randomKey = availableTypes[Math.floor(Math.random() * availableTypes.length)];
                             this.collectibles.push(new Collectible(dropX, dropY, POWER_UPS[randomKey].id));
-                        } else {
-                            this.collectibles.push(new Collectible(dropX, dropY, "water"));
+                            this.lastPowerUpY = y;
+                            spawnedPowerUp = true;
                         }
-                    } else {
-                        this.collectibles.push(new Collectible(dropX, dropY, "water"));
                     }
-                } else {
-                    this.collectibles.push(new Collectible(dropX, dropY, "water"));
+                }
 
+                if (!spawnedPowerUp) {
+                    this.collectibles.push(new Collectible(dropX, dropY, "water"));
                     // Bonus double drops (only for water)
                     if (Math.random() < 0.2) {
                         this.collectibles.push(new Collectible(dropX + (Math.random() > 0.5 ? 25 : -25), dropY - 20, "water"));
