@@ -148,7 +148,6 @@ export class World {
         const heightMeters = Math.max(0, Math.floor((this.game.height - this.game.player.y - this.game.player.height) / 10));
 
         // Dynamic wind in Sky biome
-        const zone = heightMeters % 500;
         if (heightMeters >= 300 && heightMeters < 450) {
             this.windTimer += 0.02;
             this.wind = Math.sin(this.windTimer);
@@ -156,6 +155,7 @@ export class World {
             this.wind *= 0.95;
         }
 
+        // Generate platforms as we climb
         if (this.game.camera.y < this.highestPoint + this.game.height * 2) {
             this.generatePlatforms();
         }
@@ -189,7 +189,6 @@ export class World {
     }
 
     updateReachedCheckpoint(platform) {
-        // Only update if it's a higher checkpoint (lower Y)
         if (platform.y < this.lastReachedCheckpoint.y) {
             this.lastReachedCheckpoint = {
                 x: platform.x,
@@ -199,7 +198,6 @@ export class World {
             this.game.soundManager.playMilestone();
             this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
 
-            // Visual feedback
             for (let i = 0; i < 30; i++) {
                 this.game.particles.spawn(platform.x + platform.width / 2, platform.y, "#ffd700", 5);
             }
@@ -213,14 +211,13 @@ export class World {
         // Reset world generation pointer to the checkpoint
         this.highestPoint = this.lastReachedCheckpoint.y;
 
-        // Fix nextCheckpointHeight to be correct for the current height
+        // Fix nextCheckpointHeight to be correct
         const currentHeightMeters = Math.floor((this.game.height - this.highestPoint) / 10);
-        this.nextCheckpointHeight = Math.ceil((currentHeightMeters + 1) / 1000) * 1000;
+        this.nextCheckpointHeight = (Math.floor(currentHeightMeters / 1000) + 1) * 1000;
 
-        // Force generate some platforms immediately
+        // Immediately fill the view
         this.generatePlatforms();
 
-        // Visual effect: burst of particles at the checkpoint
         for (let i = 0; i < 50; i++) {
             this.game.particles.spawn(this.lastReachedCheckpoint.x + this.lastReachedCheckpoint.width / 2, this.lastReachedCheckpoint.y, "#ffd700", 10);
         }
@@ -230,7 +227,6 @@ export class World {
         for (const p of this.platforms) {
             if (!p.active) continue;
 
-            // Determine color based on biome
             const depth = Math.max(0, Math.floor((this.game.height - p.y) / 10));
             let biome = BIOMES[0];
             for (let i = BIOMES.length - 1; i >= 0; i--) {
@@ -255,18 +251,16 @@ export class World {
                 }
             } else if (p.type === "gold") {
                 ctx.fillStyle = "#ffd700";
-                // Checkpoint glow
                 ctx.shadowBlur = 10;
                 ctx.shadowColor = "#ffd700";
             }
 
             ctx.fillRect(p.x, p.y, p.width, p.height);
 
-            // Highlight border
             ctx.strokeStyle = p.type === "gold" ? "#ffffff" : "rgba(255,255,255,0.5)";
             ctx.lineWidth = p.type === "gold" ? 3 : 2;
             ctx.strokeRect(p.x, p.y, p.width, p.height);
-            ctx.shadowBlur = 0; // Reset shadow for next draws
+            ctx.shadowBlur = 0;
         }
 
         this.collectibles.forEach(c => {
