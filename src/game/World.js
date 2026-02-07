@@ -28,17 +28,33 @@ export class World {
 
     generatePlatforms() {
         while (this.highestPoint > this.game.camera.y - this.game.height) {
-            const gap = WORLD_CONFIG.SPAWN_GAP_MIN + Math.random() * (WORLD_CONFIG.SPAWN_GAP_MAX - WORLD_CONFIG.SPAWN_GAP_MIN);
+            const currentHeight = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
+            // Progressive difficulty scaling (0 to 1 based on 10,000m goal)
+            const progression = Math.min(1, currentHeight / 10000);
+
+            // 1. Gaps increase with height
+            const gapMin = WORLD_CONFIG.SPAWN_GAP_MIN + (progression * 40);
+            const gapMax = WORLD_CONFIG.SPAWN_GAP_MAX + (progression * 60);
+            const gap = gapMin + Math.random() * (gapMax - gapMin);
             const y = this.highestPoint - gap;
 
-            const pWidth = WORLD_CONFIG.PLATFORM_WIDTH_MIN + Math.random() * (WORLD_CONFIG.PLATFORM_WIDTH_MAX - WORLD_CONFIG.PLATFORM_WIDTH_MIN);
+            // 2. Platforms get smaller with height
+            const widthMin = Math.max(40, WORLD_CONFIG.PLATFORM_WIDTH_MIN - (progression * 20));
+            const widthMax = Math.max(60, WORLD_CONFIG.PLATFORM_WIDTH_MAX - (progression * 50));
+            const pWidth = widthMin + Math.random() * (widthMax - widthMin);
             const x = Math.random() * (this.game.width - pWidth);
 
+            // 3. Hazard frequency increases with height/biomes
             let type = "brown";
+            const hazardChance = 0.05 + (progression * 0.25); // Starts at 5%, goes up to 30%
             const rand = Math.random();
-            if (rand > 0.92) type = "pink"; // Bouncy
-            else if (rand > 0.8) type = "blue"; // Ice
-            else if (rand > 0.7) type = "red";  // Fragile
+
+            if (rand < hazardChance) {
+                const typeRand = Math.random();
+                if (progression > 0.6 && typeRand > 0.6) type = "red"; // More fragile platforms in Space
+                else if (progression > 0.3 && typeRand > 0.5) type = "blue"; // More ice in Sky/Space
+                else type = "pink"; // Bouncy platforms are common hazards
+            }
 
             this.platforms.push({
                 x, y,
