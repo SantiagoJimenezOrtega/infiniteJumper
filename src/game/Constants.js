@@ -40,127 +40,37 @@ export const SHOP_ANIMALS = [
             chargeSpeed: 1.0,
             display: { force: 60, weight: 50, speed: 50, agility: 40 }
         },
-        description: "DIFICULTAD: BAJA. Equilibrada e ideal para empezar."
-    },
-    {
-        id: "flea",
-        name: "Pulga",
-        emoji: "🐜",
-        price: 200,
-        color: "#cc6600",
-        stats: {
-            jumpForce: 25,
-            jumpAngleX: 0.25,
-            gravity: 0.5,
-            chargeSpeed: 3.5,
-            display: { force: 95, weight: 10, speed: 100, agility: 20 }
-        },
-        description: "DIFICULTAD: ALTA. Explosión pura, control muy errático."
-    },
-    {
-        id: "goat",
-        name: "Cabra",
-        emoji: "🐐",
-        price: 800,
-        color: "#aaaaaa",
-        stats: {
-            jumpForce: 20,
-            jumpAngleX: 0.65,
-            gravity: 1.8,
-            chargeSpeed: 0.9,
-            display: { force: 70, weight: 95, speed: 30, agility: 50 }
-        },
-        description: "DIFICULTAD: MEDIA. Cae pesado para aterrizajes quirúrgicos."
+        description: "EQUILIBRADO: Ideal para empezar. Saltos precisos y control estable."
     },
     {
         id: "rabbit",
         name: "Conejo",
         emoji: "🐇",
-        price: 1500,
+        price: 500,
         color: "#ffffff",
         stats: {
-            jumpForce: 16.5,
-            jumpAngleX: 0.95,
-            gravity: 1.1,
-            chargeSpeed: 1.6,
-            display: { force: 45, weight: 60, speed: 85, agility: 70 }
-        },
-        description: "DIFICULTAD: MEDIA. Agilidad horizontal pura."
-    },
-    {
-        id: "grasshopper",
-        name: "Saltamontes",
-        emoji: "🦗",
-        price: 3500,
-        color: "#00cc00",
-        stats: {
-            jumpForce: 23,
-            jumpAngleX: 1.2,
-            gravity: 0.7,
-            chargeSpeed: 1.3,
-            display: { force: 80, weight: 25, speed: 70, agility: 60 }
-        },
-        description: "VENTAJA: Gran alcance. Facilita los saltos largos."
-    },
-    {
-        id: "squirrel",
-        name: "Ardilla",
-        emoji: "🐿️",
-        price: 7000,
-        color: "#CD853F",
-        stats: {
-            jumpForce: 16,
-            jumpAngleX: 0.8,
-            gravity: 0.35,
-            chargeSpeed: 2.0,
-            display: { force: 30, weight: 15, speed: 90, agility: 80 }
-        },
-        description: "VENTAJA: Planeo. Casi no le afecta la gravedad."
-    },
-    {
-        id: "cat",
-        name: "Gato",
-        emoji: "🐱",
-        price: 10000,
-        color: "#FF8C00",
-        stats: {
-            jumpForce: 21,
-            jumpAngleX: 0.75,
+            jumpForce: 17.0,
+            jumpAngleX: 0.9,
             gravity: 0.9,
-            chargeSpeed: 1.2,
-            display: { force: 65, weight: 40, speed: 60, agility: 95 }
+            chargeSpeed: 1.5,
+            display: { force: 50, weight: 40, speed: 80, agility: 70 }
         },
-        description: "VENTAJA: Control total. La maniobrabilidad definitiva."
+        description: "AGILIDAD: Carga más rápido y tiene mejor alcance horizontal."
     },
     {
         id: "kangaroo",
         name: "Canguro",
         emoji: "🦘",
-        price: 15000,
+        price: 2000,
         color: "#D2691E",
         stats: {
-            jumpForce: 28,
-            jumpAngleX: 0.85,
-            gravity: 1.4,
+            jumpForce: 23.0,
+            jumpAngleX: 0.7,
+            gravity: 1.3,
             chargeSpeed: 0.8,
-            display: { force: 100, weight: 80, speed: 20, agility: 40 }
+            display: { force: 90, weight: 80, speed: 30, agility: 50 }
         },
-        description: "VENTAJA: Super Potencia. El más fuerte del juego."
-    },
-    {
-        id: "eagle",
-        name: "Águila",
-        emoji: "🦅",
-        price: 25000,
-        color: "#8B4513",
-        stats: {
-            jumpForce: 15,
-            jumpAngleX: 0.5,
-            gravity: 0.15,
-            chargeSpeed: 2.8,
-            display: { force: 20, weight: 5, speed: 95, agility: 100 }
-        },
-        description: "GOD MODE. Vuelo casi infinito en el cielo."
+        description: "POTENCIA: Salto vertical masivo pero cae con mucha fuerza."
     }
 ];
 
