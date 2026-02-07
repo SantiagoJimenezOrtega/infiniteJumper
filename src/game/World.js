@@ -13,9 +13,13 @@ export class World {
         this.windStrength = 0.05;
         this.lastPowerUpY = this.highestPoint;
         this.nextCheckpointHeight = 1000;
-        this.lastCheckpointY = this.highestPoint;
-        this.lastCheckpointWidth = this.game.width;
-        this.lastCheckpointX = 0;
+
+        // Track the checkpoint we actually landed on
+        this.lastReachedCheckpoint = {
+            x: 0,
+            y: this.game.height - 20,
+            width: this.game.width
+        };
 
         // Ground platform
         this.platforms.push({
@@ -32,7 +36,8 @@ export class World {
     }
 
     generatePlatforms() {
-        while (this.highestPoint > this.game.camera.y - this.game.height) {
+        // Generate platforms until we are at least 2 screen heights above the camera
+        while (this.highestPoint > this.game.camera.y - this.game.height * 2) {
             const currentHeight = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             // Progressive difficulty scaling (0 to 1 based on 10,000m goal)
             const progression = Math.min(1, currentHeight / 10000);
@@ -55,9 +60,6 @@ export class World {
                     respawnTimer: 0
                 });
 
-                this.lastCheckpointY = y;
-                this.lastCheckpointX = x;
-                this.lastCheckpointWidth = pWidth;
                 this.nextCheckpointHeight += 1000;
                 this.highestPoint = y;
                 continue;
@@ -180,24 +182,47 @@ export class World {
         this.collectibles.forEach(c => c.update(1 / 60));
 
         // Cleanup: Remove platforms far below camera (keep checkpoints)
-        this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 200);
+        this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 600);
 
         // Remove old collectibles
         this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height);
+    }
+
+    updateReachedCheckpoint(platform) {
+        // Only update if it's a higher checkpoint (lower Y)
+        if (platform.y < this.lastReachedCheckpoint.y) {
+            this.lastReachedCheckpoint = {
+                x: platform.x,
+                y: platform.y,
+                width: platform.width
+            };
+            this.game.soundManager.playMilestone();
+            this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
+
+            // Visual feedback
+            for (let i = 0; i < 30; i++) {
+                this.game.particles.spawn(platform.x + platform.width / 2, platform.y, "#ffd700", 5);
+            }
+        }
     }
 
     respawnAtCheckpoint() {
         // Clear all non-checkpoint platforms
         this.platforms = this.platforms.filter(p => p.isCheckpoint);
 
-        // Find latest checkpoint the player reached
-        // (Actually Game should handle player positioning, but World rebuilds the path)
-        this.highestPoint = this.lastCheckpointY;
+        // Reset world generation pointer to the checkpoint
+        this.highestPoint = this.lastReachedCheckpoint.y;
+
+        // Fix nextCheckpointHeight to be correct for the current height
+        const currentHeightMeters = Math.floor((this.game.height - this.highestPoint) / 10);
+        this.nextCheckpointHeight = Math.ceil((currentHeightMeters + 1) / 1000) * 1000;
+
+        // Force generate some platforms immediately
         this.generatePlatforms();
 
         // Visual effect: burst of particles at the checkpoint
         for (let i = 0; i < 50; i++) {
-            this.game.particles.spawn(this.lastCheckpointX + this.lastCheckpointWidth / 2, this.lastCheckpointY, "#ffd700", 10);
+            this.game.particles.spawn(this.lastReachedCheckpoint.x + this.lastReachedCheckpoint.width / 2, this.lastReachedCheckpoint.y, "#ffd700", 10);
         }
     }
 

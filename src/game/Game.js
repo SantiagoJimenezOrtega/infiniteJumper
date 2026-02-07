@@ -323,8 +323,9 @@ export class Game {
             // Death / Checkpoint Respawn Logic
             if (this.player.y > this.camera.y + this.height + 100) {
                 // RESPAWN AT CHECKPOINT
-                this.player.x = this.world.lastCheckpointX + (this.world.lastCheckpointWidth / 2) - (this.player.width / 2);
-                this.player.y = this.world.lastCheckpointY - this.player.height - 20;
+                const cp = this.world.lastReachedCheckpoint;
+                this.player.x = cp.x + (cp.width / 2) - (this.player.width / 2);
+                this.player.y = cp.y - this.player.height - 20;
                 this.player.vx = 0;
                 this.player.vy = 0;
                 this.player.grounded = true;

@@ -221,6 +221,11 @@ export class Player {
                 if (this.vy > 0) {
                     this.y = platform.y - this.height;
 
+                    // Checkpoint logic
+                    if (platform.isCheckpoint) {
+                        this.game.world.updateReachedCheckpoint(platform);
+                    }
+
                     // Combo/Land logic
                     if (!this.hasLanded) {
                         const now = performance.now();
