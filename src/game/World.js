@@ -38,12 +38,12 @@ export class World {
     generatePlatforms() {
         // Generate platforms until we are at least 2 screen heights above the camera
         while (this.highestPoint > this.game.camera.y - this.game.height * 2) {
-            const currentHeight = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
-            // Progressive difficulty scaling (0 to 1 based on 10,000m goal)
-            const progression = Math.min(1, currentHeight / 10000);
+            // 1. Calculate height for difficulty and checkpoints
+            const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
+            const progression = Math.min(1, currentHeightMeters / 10000);
 
-            // Check for checkpoint spawning (every 1000m)
-            if (currentHeight >= this.nextCheckpointHeight) {
+            // 2. Check for checkpoint spawning (every 1000m)
+            if (currentHeightMeters >= this.nextCheckpointHeight) {
                 const gap = 150;
                 const y = this.highestPoint - gap;
                 const pWidth = this.game.width * 0.7;
@@ -60,7 +60,7 @@ export class World {
                     respawnTimer: 0
                 });
 
-                this.nextCheckpointHeight += 1000;
+                this.nextCheckpointHeight = (Math.floor(currentHeightMeters / 1000) + 1) * 1000;
                 this.highestPoint = y;
                 continue;
             }
@@ -156,7 +156,16 @@ export class World {
         }
 
         // Generate platforms as we climb
-        if (this.game.camera.y < this.highestPoint + this.game.height * 2) {
+        // Detect the topmost platform currently in existence
+        let topY = this.game.height;
+        for (const p of this.platforms) {
+            if (p.y < topY) topY = p.y;
+        }
+
+        // If the 'top' of our current world is too low, or if the view is empty, regenerate.
+        // This handles cases where the player fell far and platforms below were deleted.
+        if (topY > this.game.camera.y - this.game.height * 2) {
+            this.highestPoint = topY;
             this.generatePlatforms();
         }
 
