@@ -83,29 +83,6 @@ export class Game {
             muteBtn.addEventListener("click", toggle);
             muteBtn.addEventListener("touchstart", toggle, { passive: false });
         }
-
-        // Regen Buttons
-        const btnYes = document.getElementById("regen-yes");
-        const btnNo = document.getElementById("regen-no");
-        if (btnYes) {
-            const handle = (e) => {
-                e.preventDefault();
-                document.getElementById("regen-popup").style.display = "none";
-                this.menu.active = false;
-                this.world.regenerate();
-            };
-            btnYes.onclick = handle;
-            btnYes.ontouchstart = handle;
-        }
-        if (btnNo) {
-            const handle = (e) => {
-                e.preventDefault();
-                document.getElementById("regen-popup").style.display = "none";
-                this.menu.active = false;
-            };
-            btnNo.onclick = handle;
-            btnNo.ontouchstart = handle;
-        }
     }
 
     continueGame(diff) {
@@ -253,11 +230,11 @@ export class Game {
 
     showComboPopup(count, x, y) {
         this.floatingTexts.push({
-            text: `${count}x Combo!`,
+            text: isNaN(count) ? count : `${count}x Combo!`,
             x: x + 15, y: y - 20,
             life: 1.0, vy: -2,
             color: "#ffcc00",
-            scale: Math.min(1 + (count * 0.2), 2)
+            scale: isNaN(count) ? 1.2 : Math.min(1 + (count * 0.2), 2)
         });
     }
 
@@ -359,11 +336,11 @@ export class Game {
 
                 this.soundManager.playBounce(); // Feedback sound
 
-                // If it's not the start, ask to regenerate
+                // AUTOMATIC REGENERATION ON RESPOND
                 if (cp.id !== 'start') {
-                    this.showRegenPrompt();
+                    this.world.regenerate();
+                    this.modalMessage("¡MENSAJE DEL CIELO!\n\nHas regresado a un checkpoint. Hemos reconstruido el camino para que intentes subir de nuevo con más suerte.");
                 } else {
-                    // Force a small generation for safety
                     this.world.generatePlatforms();
                 }
             }
@@ -459,12 +436,6 @@ export class Game {
         };
         bclose.onclick = handleClose;
         bclose.ontouchstart = handleClose;
-    }
-
-    showRegenPrompt() {
-        const popup = document.getElementById("regen-popup");
-        popup.style.display = "flex";
-        this.menu.active = true;
     }
 
     updatePowerUpTimers() {
@@ -575,6 +546,6 @@ export class Game {
     }
 
     drawBulletTimeEffect() {
-        // Reduced effect for performance
+        // Effect logic
     }
 }

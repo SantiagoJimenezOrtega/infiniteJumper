@@ -16,7 +16,6 @@ export class World {
         this.firstCheckpointNotified = false;
 
         // Track the checkpoint we actually landed on
-        // Initial state is the floor
         this.lastReachedCheckpoint = {
             x: 0,
             y: this.game.height - 20,
@@ -58,9 +57,6 @@ export class World {
                 const gap = 150;
                 const y = this.highestPoint - gap;
 
-                // WIDTH SCALING FOR CHECKPOINTS
-                // 200m checkpoint is full width.
-                // It scales down until 5000m where it stays at 120px (about platform size)
                 let pWidth;
                 if (currentHeightMeters <= 200) {
                     pWidth = this.game.width;
@@ -77,7 +73,7 @@ export class World {
                     height: 25,
                     type: "gold",
                     isCheckpoint: true,
-                    id: 'cp_' + y, // Unique ID based on altitude
+                    id: 'cp_' + y,
                     active: true,
                     timer: 0,
                     respawnTimer: 0
@@ -202,14 +198,7 @@ export class World {
     }
 
     updateReachedCheckpoint(platform) {
-        // If we landed on a checkpoint that is NOT as high as our best,
-        // it means we fell. Show the prompt!
-        if (platform.y > this.lastReachedCheckpoint.y && platform.id !== 'start') {
-            this.game.showRegenPrompt();
-            return;
-        }
-
-        // If it's a new personal best checkpoint
+        // PERSONAL BEST CHECKPOINT
         if (platform.y < this.lastReachedCheckpoint.y) {
             this.lastReachedCheckpoint = {
                 x: platform.x,
@@ -220,7 +209,7 @@ export class World {
             this.game.soundManager.playMilestone();
 
             if (!this.firstCheckpointNotified) {
-                this.game.modalMessage("¡Checkpoint alcanzado! Si caes y aterrizas aquí de nuevo, podrás decidir si regeneras las plataformas perdidas.");
+                this.game.modalMessage("¡Checkpoint alcanzado!\n\nSi caes y regresas aquí, regeneraremos automáticamente el camino por ti.");
                 this.firstCheckpointNotified = true;
             } else {
                 this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
@@ -245,8 +234,6 @@ export class World {
         for (let i = 0; i < 50; i++) {
             this.game.particles.spawn(this.lastReachedCheckpoint.x + this.lastReachedCheckpoint.width / 2, this.lastReachedCheckpoint.y, "#ffd700", 10);
         }
-
-        this.game.showComboPopup("MUNDO REGENERADO", this.lastReachedCheckpoint.x, this.lastReachedCheckpoint.y);
     }
 
     draw(ctx) {
