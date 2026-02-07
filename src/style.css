@@ -598,8 +598,10 @@ canvas {
     }
 
     .shop-details-panel {
-        padding: 25px;
-        border-radius: 25px;
+        padding: 20px;
+        border-radius: 20px;
+        min-width: 0;
+        width: 100%;
     }
 
     .details-emoji {
@@ -612,30 +614,77 @@ canvas {
 }
 
 @media (max-width: 450px) {
+    .menu-buttons {
+        max-width: 100%;
+        width: 95%;
+        gap: 20px;
+    }
+
+    .menu-btn {
+        padding: 22px 30px;
+        font-size: 1.3rem;
+        border-radius: 20px;
+    }
+
+    .game-title {
+        font-size: 3.5rem;
+        margin-bottom: 40px;
+    }
+
+    .shop-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .shop-wallet {
+        font-size: 1.2rem;
+        padding: 8px 15px;
+    }
+
     #back-button {
-        width: 44px;
-        height: 44px;
-        padding: 0;
-        border-radius: 50%;
+        width: 60px;
+        height: 60px;
         font-size: 0;
         display: flex;
         align-items: center;
         justify-content: center;
+        z-index: 100;
     }
 
     #back-button::before {
         content: '⬅';
-        font-size: 20px;
+        font-size: 28px;
     }
 
     #score-container {
-        padding: 8px 15px;
-        font-size: 0.85rem;
-        gap: 8px;
+        padding: 12px 20px;
+        font-size: 1.1rem;
+        gap: 12px;
+        width: auto;
+    }
+
+    #drops-score {
+        font-size: 1.3rem;
     }
 
     #high-score {
         display: none;
+    }
+
+    .pu-popup-content {
+        max-width: 95%;
+        padding: 40px 25px;
+    }
+
+    .pu-popup-content h2 {
+        font-size: 2rem;
+    }
+
+    .pu-popup-content p {
+        font-size: 1.2rem;
+    }
+
+    .pu-popup-emoji {
+        font-size: 80px;
     }
 }
 
