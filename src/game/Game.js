@@ -83,6 +83,29 @@ export class Game {
             muteBtn.addEventListener("click", toggle);
             muteBtn.addEventListener("touchstart", toggle, { passive: false });
         }
+
+        // Regen Buttons
+        const btnYes = document.getElementById("regen-yes");
+        const btnNo = document.getElementById("regen-no");
+        if (btnYes) {
+            const handle = (e) => {
+                e.preventDefault();
+                document.getElementById("regen-popup").style.display = "none";
+                this.menu.active = false;
+                this.world.regenerate();
+            };
+            btnYes.onclick = handle;
+            btnYes.ontouchstart = handle;
+        }
+        if (btnNo) {
+            const handle = (e) => {
+                e.preventDefault();
+                document.getElementById("regen-popup").style.display = "none";
+                this.menu.active = false;
+            };
+            btnNo.onclick = handle;
+            btnNo.ontouchstart = handle;
+        }
     }
 
     continueGame(diff) {
@@ -334,9 +357,15 @@ export class Game {
                 this.camera.y = this.player.y - this.height / 2;
                 if (this.camera.y > 0) this.camera.y = 0;
 
-                this.world.respawnAtCheckpoint();
-                this.showComboPopup("¡REGENERANDO!", this.player.x, this.player.y);
                 this.soundManager.playBounce(); // Feedback sound
+
+                // If it's not the start, ask to regenerate
+                if (cp.id !== 'start') {
+                    this.showRegenPrompt();
+                } else {
+                    // Force a small generation for safety
+                    this.world.generatePlatforms();
+                }
             }
 
             // Milestones
@@ -407,6 +436,35 @@ export class Game {
         };
         bclose.onclick = handleClose;
         bclose.ontouchstart = handleClose;
+    }
+
+    modalMessage(msg) {
+        const popup = document.getElementById("powerup-popup");
+        const emoji = document.getElementById("pu-popup-emoji");
+        const name = document.getElementById("pu-popup-name");
+        const desc = document.getElementById("pu-popup-desc");
+        const bclose = document.getElementById("pu-popup-close");
+
+        emoji.innerText = "🏆";
+        name.innerText = "MENSAJE DEL CIELO";
+        desc.innerText = msg;
+
+        popup.style.display = "flex";
+        this.menu.active = true;
+
+        const handleClose = (e) => {
+            e.preventDefault();
+            popup.style.display = "none";
+            this.menu.active = false;
+        };
+        bclose.onclick = handleClose;
+        bclose.ontouchstart = handleClose;
+    }
+
+    showRegenPrompt() {
+        const popup = document.getElementById("regen-popup");
+        popup.style.display = "flex";
+        this.menu.active = true;
     }
 
     updatePowerUpTimers() {

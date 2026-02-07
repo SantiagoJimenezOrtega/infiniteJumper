@@ -12,13 +12,15 @@ export class World {
         this.windTimer = 0;
         this.windStrength = 0.05;
         this.lastPowerUpY = this.highestPoint;
-        this.nextCheckpointHeight = 1000;
+        this.nextCheckpointHeight = 200; // First interval
+        this.firstCheckpointNotified = false;
 
         // Track the checkpoint we actually landed on
         this.lastReachedCheckpoint = {
             x: 0,
             y: this.game.height - 20,
-            width: this.game.width
+            width: this.game.width,
+            id: 'start'
         };
 
         // Ground platform
@@ -35,6 +37,15 @@ export class World {
         this.generatePlatforms();
     }
 
+    getNextCheckpointInterval(height) {
+        if (height < 1000) return 200;
+        if (height < 2000) return 250;
+        if (height < 3000) return 500;
+        if (height < 5000) return 1000;
+        if (height < 10000) return 2500;
+        return 5000;
+    }
+
     generatePlatforms() {
         // Generate platforms until we are at least 2 screen heights above the camera
         while (this.highestPoint > this.game.camera.y - this.game.height * 2) {
@@ -42,7 +53,7 @@ export class World {
             const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             const progression = Math.min(1, currentHeightMeters / 10000);
 
-            // 2. Check for checkpoint spawning (every 1000m)
+            // 2. Check for checkpoint spawning
             if (currentHeightMeters >= this.nextCheckpointHeight) {
                 const gap = 150;
                 const y = this.highestPoint - gap;
@@ -60,7 +71,8 @@ export class World {
                     respawnTimer: 0
                 });
 
-                this.nextCheckpointHeight = (Math.floor(currentHeightMeters / 1000) + 1) * 1000;
+                const interval = this.getNextCheckpointInterval(currentHeightMeters);
+                this.nextCheckpointHeight = (Math.floor(currentHeightMeters / interval) + 1) * interval;
                 this.highestPoint = y;
                 continue;
             }
@@ -163,7 +175,6 @@ export class World {
         }
 
         // If the 'top' of our current world is too low, or if the view is empty, regenerate.
-        // This handles cases where the player fell far and platforms below were deleted.
         if (topY > this.game.camera.y - this.game.height * 2) {
             this.highestPoint = topY;
             this.generatePlatforms();
@@ -205,7 +216,13 @@ export class World {
                 width: platform.width
             };
             this.game.soundManager.playMilestone();
-            this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
+
+            if (!this.firstCheckpointNotified) {
+                this.game.modalMessage("¡Checkpoint alcanzado! Esperemos que no, pero si caes y vuelves aquí podrás regenerar las plataformas perdidas.");
+                this.firstCheckpointNotified = true;
+            } else {
+                this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
+            }
 
             for (let i = 0; i < 30; i++) {
                 this.game.particles.spawn(platform.x + platform.width / 2, platform.y, "#ffd700", 5);
@@ -214,17 +231,19 @@ export class World {
     }
 
     respawnAtCheckpoint() {
+        // Find if we should prompt for regeneration
+        // In this method we just prepare the player position. The prompting is in Game.js
+    }
+
+    regenerate() {
         // Clear all non-checkpoint platforms
         this.platforms = this.platforms.filter(p => p.isCheckpoint);
-
-        // Reset world generation pointer to the checkpoint
         this.highestPoint = this.lastReachedCheckpoint.y;
 
-        // Fix nextCheckpointHeight to be correct
-        const currentHeightMeters = Math.floor((this.game.height - this.highestPoint) / 10);
-        this.nextCheckpointHeight = (Math.floor(currentHeightMeters / 1000) + 1) * 1000;
+        const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
+        const interval = this.getNextCheckpointInterval(currentHeightMeters);
+        this.nextCheckpointHeight = (Math.floor(currentHeightMeters / interval) + 1) * interval;
 
-        // Immediately fill the view
         this.generatePlatforms();
 
         for (let i = 0; i < 50; i++) {
