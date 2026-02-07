@@ -1,3 +1,10 @@
+@media (max-width: 600px) {
+    :root {
+        font-size: 110%;
+        /* Increase base font size for all children */
+    }
+}
+
 :root {
     /* Color Palette - Premium Neon/Dark Theme */
     --accent-cyan: hsl(180, 100%, 50%);
@@ -613,78 +620,80 @@ canvas {
     }
 }
 
-@media (max-width: 450px) {
+@media (max-width: 600px) {
     .menu-buttons {
-        max-width: 100%;
-        width: 95%;
-        gap: 20px;
+        max-width: 100% !important;
+        width: 90% !important;
+        gap: 25px !important;
     }
 
     .menu-btn {
-        padding: 22px 30px;
-        font-size: 1.3rem;
-        border-radius: 20px;
+        padding: 25px 35px !important;
+        font-size: 1.5rem !important;
+        border-radius: 24px !important;
+        width: 100% !important;
     }
 
     .game-title {
-        font-size: 3.5rem;
-        margin-bottom: 40px;
+        font-size: 4rem !important;
+        margin-bottom: 50px !important;
     }
 
     .shop-header h2 {
-        font-size: 1.2rem;
+        font-size: 1.5rem !important;
     }
 
     .shop-wallet {
-        font-size: 1.2rem;
-        padding: 8px 15px;
+        font-size: 1.4rem !important;
+        padding: 10px 20px !important;
     }
 
     #back-button {
-        width: 60px;
-        height: 60px;
-        font-size: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 100;
+        width: 70px !important;
+        height: 70px !important;
+        font-size: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 100 !important;
     }
 
     #back-button::before {
-        content: '⬅';
-        font-size: 28px;
+        content: '⬅' !important;
+        font-size: 32px !important;
     }
 
     #score-container {
-        padding: 12px 20px;
-        font-size: 1.1rem;
-        gap: 12px;
-        width: auto;
+        padding: 15px 25px !important;
+        font-size: 1.2rem !important;
+        gap: 15px !important;
+        width: auto !important;
     }
 
     #drops-score {
-        font-size: 1.3rem;
+        font-size: 1.5rem !important;
     }
 
     #high-score {
-        display: none;
+        display: none !important;
     }
 
     .pu-popup-content {
-        max-width: 95%;
-        padding: 40px 25px;
+        max-width: 95% !important;
+        padding: 50px 30px !important;
+        border-width: 5px !important;
     }
 
     .pu-popup-content h2 {
-        font-size: 2rem;
+        font-size: 2.2rem !important;
     }
 
     .pu-popup-content p {
-        font-size: 1.2rem;
+        font-size: 1.4rem !important;
     }
 
     .pu-popup-emoji {
-        font-size: 80px;
+        font-size: 100px !important;
     }
 }
 
