@@ -13,11 +13,27 @@ import { POWER_UPS } from './Constants.js';
 export class Game {
     constructor(canvas) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext("2d");
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
+        this.ctx = canvas.getContext("2d", { alpha: false }); // Performance: Disable alpha for main canvas
+        this.width = 400; // Logical width
+        this.height = 0; // Will be set in resize
+        this.scale = 1;
+
+        this.handleResize = () => {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // Calculate scale to fit logical width
+            this.scale = windowWidth / this.width;
+            this.height = windowHeight / this.scale;
+
+            this.canvas.width = windowWidth;
+            this.canvas.height = windowHeight;
+
+            // Reset context properties as they are lost on resize
+            this.ctx.imageSmoothingEnabled = false;
+        };
+
+        this.handleResize();
 
         this.input = new Input();
         this.menu = new Menu(this);
@@ -44,12 +60,7 @@ export class Game {
 
         this.setupEventListeners();
 
-        window.addEventListener("resize", () => {
-            this.width = window.innerWidth;
-            this.height = window.innerHeight;
-            this.canvas.width = this.width;
-            this.canvas.height = this.height;
-        });
+        window.addEventListener("resize", this.handleResize);
     }
 
     setupEventListeners() {
@@ -446,7 +457,8 @@ export class Game {
     }
 
     draw() {
-        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.ctx.save();
+        this.ctx.scale(this.scale, this.scale);
         this.background.draw(this.ctx);
 
         this.ctx.save();
@@ -507,32 +519,6 @@ export class Game {
     }
 
     drawBulletTimeEffect() {
-        const ctx = this.ctx;
-        const pulse = Math.sin(Date.now() / 200) * 0.1 + 0.9;
-
-        ctx.save();
-        // 1. Magenta Vignette
-        const grad = ctx.createRadialGradient(
-            this.width / 2, this.height / 2, this.width * 0.2,
-            this.width / 2, this.height / 2, this.width * 0.8
-        );
-        grad.addColorStop(0, "rgba(255, 0, 204, 0)");
-        grad.addColorStop(1, `rgba(255, 0, 204, ${0.2 * pulse})`);
-
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, this.width, this.height);
-
-        // 2. Chromatic Aberration Simulation (Glitchy borders)
-        ctx.strokeStyle = "rgba(0, 255, 255, 0.2)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(5 * pulse, 5 * pulse, this.width - 10, this.height - 10);
-
-        // 3. Scanline effect
-        ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-        for (let i = 0; i < this.height; i += 4) {
-            ctx.fillRect(0, i, this.width, 1);
-        }
-
-        ctx.restore();
+        // Reduced effect for performance
     }
 }

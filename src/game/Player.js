@@ -310,12 +310,9 @@ export class Player {
             if (isFull) {
                 const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
                 ctx.globalAlpha = pulse;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = "#ff0000";
             }
 
             ctx.fillRect(barX, barY, 60 * ratio, 8);
-            ctx.shadowBlur = 0;
             ctx.globalAlpha = 1;
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = 1;
@@ -326,14 +323,11 @@ export class Player {
         if (this.bulletTime) {
             const timeLeft = (this.bulletTimeEnd - performance.now()) / 1000;
             const pulse = Math.sin(Date.now() / 100) * 0.5 + 0.5;
-            ctx.shadowBlur = 20 + pulse * 10;
-            ctx.shadowColor = "#ff00cc";
 
             ctx.save();
             ctx.font = "bold 14px Inter, sans-serif";
             ctx.fillStyle = "#ff00cc";
             ctx.textAlign = "center";
-            ctx.shadowBlur = 10;
             ctx.fillText(`⚡ ${timeLeft.toFixed(1)}s`, this.x + this.width / 2, this.y - 30);
             ctx.restore();
         }
@@ -384,7 +378,6 @@ export class Player {
         if (this.facing === -1) ctx.scale(-1, 1);
         this.drawSprite(ctx);
         ctx.restore();
-        ctx.shadowBlur = 0;
     }
 
     drawSprite(ctx) {

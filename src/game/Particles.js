@@ -118,18 +118,12 @@ export class Particles {
                 ctx.fillRect(-3, -3, 6, 6);
             } else if (p.type === "cloud") {
                 ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillRect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
             } else if (p.type === "star") {
                 ctx.fillStyle = p.color;
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = "#fff";
                 ctx.fillRect(p.x, p.y, p.size, p.size);
             } else {
                 ctx.fillStyle = p.color;
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = p.color;
                 ctx.fillRect(p.x, p.y, 4, 4);
             }
             ctx.restore();

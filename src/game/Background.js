@@ -72,9 +72,7 @@ export class Background {
         this.particles.forEach(p => {
             const alpha = p.alpha * (0.6 + Math.sin(p.phase) * 0.4);
             ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
         });
     }
 

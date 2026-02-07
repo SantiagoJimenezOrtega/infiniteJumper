@@ -166,15 +166,12 @@ export class World {
                 }
             }
 
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = ctx.fillStyle;
             ctx.fillRect(p.x, p.y, p.width, p.height);
 
             // Highlight border
             ctx.strokeStyle = "rgba(255,255,255,0.5)";
             ctx.lineWidth = 2;
             ctx.strokeRect(p.x, p.y, p.width, p.height);
-            ctx.shadowBlur = 0;
         }
 
         this.collectibles.forEach(c => {
