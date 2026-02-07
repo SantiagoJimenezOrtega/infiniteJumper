@@ -484,8 +484,6 @@ export class Game {
             this.ctx.globalAlpha = ft.life;
             this.ctx.fillStyle = ft.color;
             this.ctx.font = `bold ${20 * ft.scale}px Arial`;
-            this.ctx.shadowBlur = 5;
-            this.ctx.shadowColor = "#000";
             this.ctx.fillText(ft.text, ft.x, ft.y);
             this.ctx.restore();
         }
@@ -497,10 +495,11 @@ export class Game {
             this.drawBulletTimeEffect();
         }
 
-        // Wind indicator (only if active)
         if (this.gameStarted && Math.abs(this.world.wind) > 0.1) {
             this.drawWindIndicator();
         }
+
+        this.ctx.restore(); // Restore scaling
     }
 
     drawWindIndicator() {
