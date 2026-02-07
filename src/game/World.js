@@ -11,6 +11,8 @@ export class World {
         this.wind = 0;
         this.windTimer = 0;
         this.windStrength = 0.05;
+        this.lastPowerUpY = this.highestPoint;
+        this.nextPowerUpThreshold = 250 + Math.random() * 50; // Distance to next spawn check in meters
 
         // Ground platform
         this.platforms.push({
@@ -55,16 +57,35 @@ export class World {
                 const dropX = x + pWidth / 2 - 20;
                 const dropY = y - 50;
 
-                // 50% chance for a powerup instead of water
-                if (Math.random() < 0.5) {
-                    const types = Object.keys(POWER_UPS);
-                    const randomType = types[Math.floor(Math.random() * types.length)];
-                    console.log("Generating Power-up:", randomType);
-                    this.collectibles.push(new Collectible(dropX, dropY, POWER_UPS[randomType].id));
+                // height is (game.height - y) / 10
+                // We want to check every ~250-300m
+                const distanceSinceLastPU = Math.abs(this.lastPowerUpY - y) / 10;
+
+                if (distanceSinceLastPU >= this.nextPowerUpThreshold) {
+                    this.lastPowerUpY = y;
+                    this.nextPowerUpThreshold = 250 + Math.random() * 50;
+
+                    // 50% chance for a powerup
+                    const player = this.game.player;
+                    const activePUs = player.activePowerUps || {};
+
+                    if (Math.random() < 0.5 && !activePUs['jetpack']) {
+                        // Filter out currently active powerups
+                        const availableTypes = Object.keys(POWER_UPS).filter(key => !activePUs[POWER_UPS[key].id]);
+
+                        if (availableTypes.length > 0) {
+                            const randomKey = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+                            this.collectibles.push(new Collectible(dropX, dropY, POWER_UPS[randomKey].id));
+                        } else {
+                            this.collectibles.push(new Collectible(dropX, dropY, "water"));
+                        }
+                    } else {
+                        this.collectibles.push(new Collectible(dropX, dropY, "water"));
+                    }
                 } else {
                     this.collectibles.push(new Collectible(dropX, dropY, "water"));
 
-                    // Bonus double drops
+                    // Bonus double drops (only for water)
                     if (Math.random() < 0.2) {
                         this.collectibles.push(new Collectible(dropX + (Math.random() > 0.5 ? 25 : -25), dropY - 20, "water"));
                     }

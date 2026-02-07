@@ -390,11 +390,13 @@ export class Game {
             popup.style.display = "none";
             this.menu.active = false;
         };
-        bclose.onclick = (e) => {
+        const handleClose = (e) => {
             e.preventDefault();
             e.stopPropagation();
             close();
         };
+        bclose.onclick = handleClose;
+        bclose.ontouchstart = handleClose;
     }
 
     updatePowerUpTimers() {
