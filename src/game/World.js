@@ -16,6 +16,7 @@ export class World {
         this.firstCheckpointNotified = false;
 
         // Track the checkpoint we actually landed on
+        // Initial state is the floor
         this.lastReachedCheckpoint = {
             x: 0,
             y: this.game.height - 20,
@@ -23,7 +24,7 @@ export class World {
             id: 'start'
         };
 
-        // Ground platform
+        // Ground platform (Full width)
         this.platforms.push({
             x: 0,
             y: this.game.height - 20,
@@ -31,6 +32,7 @@ export class World {
             height: 20,
             type: "gold",
             isCheckpoint: true,
+            id: 'start',
             active: true
         });
 
@@ -47,9 +49,7 @@ export class World {
     }
 
     generatePlatforms() {
-        // Generate platforms until we are at least 2 screen heights above the camera
         while (this.highestPoint > this.game.camera.y - this.game.height * 2) {
-            // 1. Calculate height for difficulty and checkpoints
             const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             const progression = Math.min(1, currentHeightMeters / 10000);
 
@@ -57,7 +57,18 @@ export class World {
             if (currentHeightMeters >= this.nextCheckpointHeight) {
                 const gap = 150;
                 const y = this.highestPoint - gap;
-                const pWidth = this.game.width * 0.7;
+
+                // WIDTH SCALING FOR CHECKPOINTS
+                // 200m checkpoint is full width.
+                // It scales down until 5000m where it stays at 120px (about platform size)
+                let pWidth;
+                if (currentHeightMeters <= 200) {
+                    pWidth = this.game.width;
+                } else {
+                    const widthProgression = Math.min(1, (currentHeightMeters - 200) / 4800);
+                    pWidth = this.game.width - (widthProgression * (this.game.width - 120));
+                }
+
                 const x = (this.game.width - pWidth) / 2;
 
                 this.platforms.push({
@@ -66,6 +77,7 @@ export class World {
                     height: 25,
                     type: "gold",
                     isCheckpoint: true,
+                    id: 'cp_' + y, // Unique ID based on altitude
                     active: true,
                     timer: 0,
                     respawnTimer: 0
@@ -77,28 +89,26 @@ export class World {
                 continue;
             }
 
-            // 1. Gaps increase with height
+            // Normal platforms
             const gapMin = WORLD_CONFIG.SPAWN_GAP_MIN + (progression * 40);
             const gapMax = WORLD_CONFIG.SPAWN_GAP_MAX + (progression * 60);
             const gap = gapMin + Math.random() * (gapMax - gapMin);
             const y = this.highestPoint - gap;
 
-            // 2. Platforms get smaller with height
             const widthMin = Math.max(40, WORLD_CONFIG.PLATFORM_WIDTH_MIN - (progression * 20));
             const widthMax = Math.max(60, WORLD_CONFIG.PLATFORM_WIDTH_MAX - (progression * 50));
             const pWidth = widthMin + Math.random() * (widthMax - widthMin);
             const x = Math.random() * (this.game.width - pWidth);
 
-            // 3. Hazard frequency increases with height/biomes
             let type = "brown";
-            const hazardChance = 0.05 + (progression * 0.25); // Starts at 5%, goes up to 30%
+            const hazardChance = 0.05 + (progression * 0.25);
             const rand = Math.random();
 
             if (rand < hazardChance) {
                 const typeRand = Math.random();
-                if (progression > 0.6 && typeRand > 0.6) type = "red"; // More fragile platforms in Space
-                else if (progression > 0.3 && typeRand > 0.5) type = "blue"; // More ice in Sky/Space
-                else type = "pink"; // Bouncy platforms are common hazards
+                if (progression > 0.6 && typeRand > 0.6) type = "red";
+                else if (progression > 0.3 && typeRand > 0.5) type = "blue";
+                else type = "pink";
             }
 
             this.platforms.push({
@@ -111,29 +121,22 @@ export class World {
                 respawnTimer: 0
             });
 
-            // Add collectible drops or power-ups
+            // Collectibles
             const randColl = Math.random();
-            if (randColl < 0.9) { // 90% chance of a collectible
+            if (randColl < 0.9) {
                 const dropX = x + pWidth / 2 - 20;
                 const dropY = y - 50;
-
-                // Power-up spawn logic
+                const player = this.game.player;
+                const activePUs = (player && player.activePowerUps) ? player.activePowerUps : {};
                 const distanceSinceLastPU = Math.abs(this.lastPowerUpY - y) / 10;
                 let spawnedPowerUp = false;
 
-                // Only consider spawning PU if we are past a minimum distance (to limit max 2 per 300m)
-                // and not while jetpack is active.
-                const player = this.game.player;
-                const activePUs = (player && player.activePowerUps) ? player.activePowerUps : {};
-
                 if (distanceSinceLastPU >= 120 && !activePUs['jetpack']) {
-                    // If we reached the 300m limit, force spawn. Otherwise, use a chance.
                     const forceSpawn = distanceSinceLastPU >= 300;
-                    const chanceSpawn = Math.random() < 0.2; // 20% chance per platform after 120m
+                    const chanceSpawn = Math.random() < 0.2;
 
                     if (forceSpawn || chanceSpawn) {
                         const availableTypes = Object.keys(POWER_UPS).filter(key => !activePUs[POWER_UPS[key].id]);
-
                         if (availableTypes.length > 0) {
                             const randomKey = availableTypes[Math.floor(Math.random() * availableTypes.length)];
                             this.collectibles.push(new Collectible(dropX, dropY, POWER_UPS[randomKey].id));
@@ -145,7 +148,6 @@ export class World {
 
                 if (!spawnedPowerUp) {
                     this.collectibles.push(new Collectible(dropX, dropY, "water"));
-                    // Bonus double drops (only for water)
                     if (Math.random() < 0.2) {
                         this.collectibles.push(new Collectible(dropX + (Math.random() > 0.5 ? 25 : -25), dropY - 20, "water"));
                     }
@@ -159,7 +161,6 @@ export class World {
     update() {
         const heightMeters = Math.max(0, Math.floor((this.game.height - this.game.player.y - this.game.player.height) / 10));
 
-        // Dynamic wind in Sky biome
         if (heightMeters >= 300 && heightMeters < 450) {
             this.windTimer += 0.02;
             this.wind = Math.sin(this.windTimer);
@@ -167,20 +168,16 @@ export class World {
             this.wind *= 0.95;
         }
 
-        // Generate platforms as we climb
-        // Detect the topmost platform currently in existence
         let topY = this.game.height;
         for (const p of this.platforms) {
             if (p.y < topY) topY = p.y;
         }
 
-        // If the 'top' of our current world is too low, or if the view is empty, regenerate.
         if (topY > this.game.camera.y - this.game.height * 2) {
             this.highestPoint = topY;
             this.generatePlatforms();
         }
 
-        // Handle fragile platforms (red)
         const now = performance.now();
         for (const p of this.platforms) {
             if (p.type === "red") {
@@ -200,25 +197,30 @@ export class World {
         }
 
         this.collectibles.forEach(c => c.update(1 / 60));
-
-        // Cleanup: Remove platforms far below camera (keep checkpoints)
         this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 600);
-
-        // Remove old collectibles
         this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height);
     }
 
     updateReachedCheckpoint(platform) {
+        // If we landed on a checkpoint that is NOT as high as our best,
+        // it means we fell. Show the prompt!
+        if (platform.y > this.lastReachedCheckpoint.y && platform.id !== 'start') {
+            this.game.showRegenPrompt();
+            return;
+        }
+
+        // If it's a new personal best checkpoint
         if (platform.y < this.lastReachedCheckpoint.y) {
             this.lastReachedCheckpoint = {
                 x: platform.x,
                 y: platform.y,
-                width: platform.width
+                width: platform.width,
+                id: platform.id
             };
             this.game.soundManager.playMilestone();
 
             if (!this.firstCheckpointNotified) {
-                this.game.modalMessage("¡Checkpoint alcanzado! Esperemos que no, pero si caes y vuelves aquí podrás regenerar las plataformas perdidas.");
+                this.game.modalMessage("¡Checkpoint alcanzado! Si caes y aterrizas aquí de nuevo, podrás decidir si regeneras las plataformas perdidas.");
                 this.firstCheckpointNotified = true;
             } else {
                 this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
@@ -230,13 +232,7 @@ export class World {
         }
     }
 
-    respawnAtCheckpoint() {
-        // Find if we should prompt for regeneration
-        // In this method we just prepare the player position. The prompting is in Game.js
-    }
-
     regenerate() {
-        // Clear all non-checkpoint platforms
         this.platforms = this.platforms.filter(p => p.isCheckpoint);
         this.highestPoint = this.lastReachedCheckpoint.y;
 
@@ -249,6 +245,8 @@ export class World {
         for (let i = 0; i < 50; i++) {
             this.game.particles.spawn(this.lastReachedCheckpoint.x + this.lastReachedCheckpoint.width / 2, this.lastReachedCheckpoint.y, "#ffd700", 10);
         }
+
+        this.game.showComboPopup("MUNDO REGENERADO", this.lastReachedCheckpoint.x, this.lastReachedCheckpoint.y);
     }
 
     draw(ctx) {
@@ -296,3 +294,4 @@ export class World {
         });
     }
 }
+破
