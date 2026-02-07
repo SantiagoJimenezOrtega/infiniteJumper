@@ -67,7 +67,7 @@ export class World {
 
                     // 50% chance for a powerup
                     const player = this.game.player;
-                    const activePUs = player.activePowerUps || {};
+                    const activePUs = (player && player.activePowerUps) ? player.activePowerUps : {};
 
                     if (Math.random() < 0.5 && !activePUs['jetpack']) {
                         // Filter out currently active powerups
