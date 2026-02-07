@@ -12,6 +12,10 @@ export class World {
         this.windTimer = 0;
         this.windStrength = 0.05;
         this.lastPowerUpY = this.highestPoint;
+        this.nextCheckpointHeight = 1000;
+        this.lastCheckpointY = this.highestPoint;
+        this.lastCheckpointWidth = this.game.width;
+        this.lastCheckpointX = 0;
 
         // Ground platform
         this.platforms.push({
@@ -19,7 +23,8 @@ export class World {
             y: this.game.height - 20,
             width: this.game.width,
             height: 20,
-            type: "brown",
+            type: "gold",
+            isCheckpoint: true,
             active: true
         });
 
@@ -31,6 +36,32 @@ export class World {
             const currentHeight = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             // Progressive difficulty scaling (0 to 1 based on 10,000m goal)
             const progression = Math.min(1, currentHeight / 10000);
+
+            // Check for checkpoint spawning (every 1000m)
+            if (currentHeight >= this.nextCheckpointHeight) {
+                const gap = 150;
+                const y = this.highestPoint - gap;
+                const pWidth = this.game.width * 0.7;
+                const x = (this.game.width - pWidth) / 2;
+
+                this.platforms.push({
+                    x, y,
+                    width: pWidth,
+                    height: 25,
+                    type: "gold",
+                    isCheckpoint: true,
+                    active: true,
+                    timer: 0,
+                    respawnTimer: 0
+                });
+
+                this.lastCheckpointY = y;
+                this.lastCheckpointX = x;
+                this.lastCheckpointWidth = pWidth;
+                this.nextCheckpointHeight += 1000;
+                this.highestPoint = y;
+                continue;
+            }
 
             // 1. Gaps increase with height
             const gapMin = WORLD_CONFIG.SPAWN_GAP_MIN + (progression * 40);
@@ -148,8 +179,26 @@ export class World {
 
         this.collectibles.forEach(c => c.update(1 / 60));
 
+        // Cleanup: Remove platforms far below camera (keep checkpoints)
+        this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 200);
+
         // Remove old collectibles
         this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height);
+    }
+
+    respawnAtCheckpoint() {
+        // Clear all non-checkpoint platforms
+        this.platforms = this.platforms.filter(p => p.isCheckpoint);
+
+        // Find latest checkpoint the player reached
+        // (Actually Game should handle player positioning, but World rebuilds the path)
+        this.highestPoint = this.lastCheckpointY;
+        this.generatePlatforms();
+
+        // Visual effect: burst of particles at the checkpoint
+        for (let i = 0; i < 50; i++) {
+            this.game.particles.spawn(this.lastCheckpointX + this.lastCheckpointWidth / 2, this.lastCheckpointY, "#ffd700", 10);
+        }
     }
 
     draw(ctx) {
@@ -179,14 +228,20 @@ export class World {
                 if (p.timer > 0 && Math.floor(Date.now() / 50) % 2 === 0) {
                     ctx.fillStyle = "#ffaaaa";
                 }
+            } else if (p.type === "gold") {
+                ctx.fillStyle = "#ffd700";
+                // Checkpoint glow
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = "#ffd700";
             }
 
             ctx.fillRect(p.x, p.y, p.width, p.height);
 
             // Highlight border
-            ctx.strokeStyle = "rgba(255,255,255,0.5)";
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = p.type === "gold" ? "#ffffff" : "rgba(255,255,255,0.5)";
+            ctx.lineWidth = p.type === "gold" ? 3 : 2;
             ctx.strokeRect(p.x, p.y, p.width, p.height);
+            ctx.shadowBlur = 0; // Reset shadow for next draws
         }
 
         this.collectibles.forEach(c => {

@@ -40,11 +40,7 @@ export class Player {
     applyPowerUp(id, duration) {
         const now = performance.now();
         this.activePowerUps[id] = now + duration;
-
-        // Immediate effects if any
-        if (id === "shield") {
-            this.game.soundManager.playCollect(); // Temporary sound
-        }
+        this.game.soundManager.playCollect(); // Universal sound
     }
 
     update(dt) {
@@ -65,12 +61,6 @@ export class Player {
         // Bullet time (already exists from pink platforms)
         if (this.bulletTime && now > this.bulletTimeEnd) {
             this.bulletTime = false;
-        }
-
-        // Time Power-up also triggers bullet time
-        if (this.activePowerUps.time) {
-            this.bulletTime = true;
-            this.bulletTimeEnd = Math.max(this.bulletTimeEnd, this.activePowerUps.time);
         }
 
         if (this.grounded) {
@@ -258,17 +248,13 @@ export class Player {
                     this.vy = -15; // Bounce
                     this.grounded = false;
                     this.bulletTime = true;
-                    this.bulletTimeEnd = performance.now() + 3000;
+                    this.bulletTimeEnd = performance.now() + 4000;
                     this.game.particles.spawn(this.x + this.width / 2, this.y + this.height, "#ff00cc", 20);
                     this.game.soundManager.playBounce();
                 } else if (platform.type === "red") {
-                    this.currentSurface = "normal";
-                    if (platform.timer === 0 && !this.activePowerUps.shield) {
+                    if (platform.timer === 0) {
                         platform.timer = performance.now() + 2000;
                         this.game.soundManager.playExplosion();
-                    } else if (this.activePowerUps.shield) {
-                        // Shield visual feedback on red platform
-                        this.game.particles.spawn(this.x + this.width / 2, this.y + this.height, "#33ccff", 3);
                     }
                 } else if (platform.type === "brown") {
                     this.currentSurface = "normal";
@@ -342,23 +328,6 @@ export class Player {
         const size = this.width;
         ctx.save();
         ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-
-        // Power-up Visuals: SHIELD
-        if (this.activePowerUps.shield) {
-            ctx.beginPath();
-            ctx.arc(0, 0, size * 0.8, 0, Math.PI * 2);
-            ctx.strokeStyle = "rgba(51, 204, 255, 0.6)";
-            ctx.lineWidth = 3;
-            ctx.stroke();
-            ctx.fillStyle = "rgba(51, 204, 255, 0.1)";
-            ctx.fill();
-
-            // Pulse effect
-            const pulse = Math.sin(Date.now() / 200) * 0.1 + 0.9;
-            ctx.strokeStyle = `rgba(51, 204, 255, ${0.2 * pulse})`;
-            ctx.lineWidth = 10 * pulse;
-            ctx.stroke();
-        }
 
         // Power-up Visuals: JETPACK
         if (this.activePowerUps.jetpack) {

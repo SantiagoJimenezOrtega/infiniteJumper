@@ -83,14 +83,6 @@ export const POWER_UPS = {
         color: "#ff3333",
         description: "¡Atrae todas las gotas de agua cercanas automáticamente!"
     },
-    SHIELD: {
-        id: "shield",
-        name: "Escudo Burbuja",
-        emoji: "🫧",
-        duration: 15000,
-        color: "#33ccff",
-        description: "Te protege de un impacto o caída mortal. ¡Segunda oportunidad!"
-    },
     JETPACK: {
         id: "jetpack",
         name: "Jetpack de Vapor",
@@ -106,14 +98,6 @@ export const POWER_UPS = {
         duration: 12000,
         color: "#ffcc00",
         description: "Reduce la gravedad a la mitad. ¡Saltos más largos y seguros!"
-    },
-    TIME: {
-        id: "time",
-        name: "Reloj Vital",
-        emoji: "⏳",
-        duration: 8000,
-        color: "#9933ff",
-        description: "Ralentiza el tiempo. Precisión quirúrgica para tus saltos."
     },
     MULTI: {
         id: "multi",

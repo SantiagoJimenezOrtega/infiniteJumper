@@ -320,24 +320,22 @@ export class Game {
 
             this.updatePowerUpTimers();
 
-            // Death / Shield Rescue Logic
+            // Death / Checkpoint Respawn Logic
             if (this.player.y > this.camera.y + this.height + 100) {
-                if (this.player.activePowerUps.shield) {
-                    // RESCUE!
-                    delete this.player.activePowerUps.shield;
-                    this.player.vy = -22; // Big boost up
-                    this.player.vx = 0;
-                    this.soundManager.playBounce(); // Rescue sound
-                    this.showComboPopup("¡ESCUDO EXPLOTADO!", this.player.x, this.player.y);
+                // RESPAWN AT CHECKPOINT
+                this.player.x = this.world.lastCheckpointX + (this.world.lastCheckpointWidth / 2) - (this.player.width / 2);
+                this.player.y = this.world.lastCheckpointY - this.player.height - 20;
+                this.player.vx = 0;
+                this.player.vy = 0;
+                this.player.grounded = true;
+                this.player.comboCount = 0;
 
-                    // Visual effects
-                    for (let i = 0; i < 40; i++) {
-                        this.particles.spawn(this.player.x + this.player.width / 2, this.player.y, "#33ccff", 15);
-                    }
-                } else {
-                    // GAME OVER
-                    this.resetGame();
-                }
+                this.camera.y = this.player.y - this.height / 2;
+                if (this.camera.y > 0) this.camera.y = 0;
+
+                this.world.respawnAtCheckpoint();
+                this.showComboPopup("¡REGENERANDO!", this.player.x, this.player.y);
+                this.soundManager.playBounce(); // Feedback sound
             }
 
             // Milestones
