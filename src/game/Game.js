@@ -15,20 +15,20 @@ export class Game {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d", { alpha: false });
         this.width = 360;
-        this.height = 0;
-        this.scale = 1;
+
+        // IMMEDIATE INITIALIZATION TO AVOID 0-HEIGHT BUGS
+        this.scale = window.innerWidth / this.width;
+        this.height = window.innerHeight / this.scale;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
 
         this.handleResize = () => {
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            this.scale = windowWidth / this.width;
-            this.height = windowHeight / this.scale;
-            this.canvas.width = windowWidth;
-            this.canvas.height = windowHeight;
+            this.scale = window.innerWidth / this.width;
+            this.height = window.innerHeight / this.scale;
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
             this.ctx.imageSmoothingEnabled = false;
         };
-
-        this.handleResize();
 
         this.input = new Input();
         this.menu = new Menu(this);
@@ -45,8 +45,6 @@ export class Game {
         this.lastTime = 0;
         this.highScore = 0;
         this.collectedCount = 0;
-        this.milestonesReached = [];
-        this.milestones = [100, 250, 500, 1000, 5000, 10000];
 
         this.seenPowerUps = JSON.parse(localStorage.getItem("seenPowerUps") || "[]");
         this.gameWon = false;
@@ -57,6 +55,7 @@ export class Game {
     }
 
     setupEventListeners() {
+        // Back Button
         const backBtn = document.getElementById("back-button");
         if (backBtn) {
             const handleBack = (e) => { e.preventDefault(); e.stopPropagation(); this.resetGame(); };
@@ -64,6 +63,7 @@ export class Game {
             backBtn.ontouchstart = handleBack;
         }
 
+        // Mute
         const muteBtn = document.getElementById("mute-button");
         if (muteBtn) {
             const toggle = (e) => {
@@ -134,8 +134,10 @@ export class Game {
         document.getElementById("back-button").style.display = "block";
         document.getElementById("score-container").style.display = "flex";
         const hint = document.getElementById("controls-hint");
-        hint.style.display = "block";
-        hint.innerText = "Manten presionado Izq/Der/Centro para saltar";
+        if (hint) {
+            hint.style.display = "block";
+            hint.innerText = "Manten presionado Izq/Der/Centro para saltar";
+        }
         if (this.saveInterval) clearInterval(this.saveInterval);
         this.saveInterval = setInterval(() => this.saveGame(), 2000);
     }
@@ -146,8 +148,6 @@ export class Game {
         if (this.saveInterval) clearInterval(this.saveInterval);
         document.getElementById("back-button").style.display = "none";
         document.getElementById("score-container").style.display = "none";
-        document.getElementById("controls-hint").style.display = "none";
-        document.getElementById("milestone-notification").style.display = "none";
         document.getElementById("btn-manual-regen").style.display = "none";
         this.menu.showScreen("main");
     }
@@ -184,12 +184,15 @@ export class Game {
             this.collectedCount = state.collectedCount || 0;
             this.updateScoreUI();
             this.player = new Player(this);
-            this.player.x = state.player.x;
-            this.player.y = state.player.y;
-            this.player.vx = state.player.vx;
-            this.player.vy = state.player.vy;
+            const p = state.player;
+            if (p && !isNaN(p.x) && !isNaN(p.y)) {
+                this.player.x = p.x;
+                this.player.y = p.y;
+                this.player.vx = p.vx || 0;
+                this.player.vy = p.vy || 0;
+            }
             this.camera = new Camera(this);
-            this.camera.y = state.camera.y;
+            this.camera.y = state.camera.y || 0;
             return true;
         } catch (e) {
             return false;
@@ -204,16 +207,6 @@ export class Game {
     updateScoreUI() {
         const el = document.getElementById("drops-score");
         if (el) el.innerText = `💧 ${this.collectedCount}`;
-    }
-
-    showMilestoneNotification(m, reward) {
-        const el = document.getElementById("milestone-notification");
-        if (el) {
-            el.innerText = `🏆 ¡${m}m Alcanzados!\n+${reward} 💧`;
-            el.style.display = "block";
-            this.soundManager.playMilestone();
-            setTimeout(() => { el.style.display = "none"; }, 3000);
-        }
     }
 
     showComboPopup(count, x, y) {
@@ -242,9 +235,10 @@ export class Game {
     }
 
     loop(time) {
-        const dt = (time - this.lastTime) / 16.66;
+        // DT CALCULATION (LIMIT TO REASONABLE RANGE)
+        const dt = Math.min(2, Math.max(0.1, (time - this.lastTime) / 16.66));
         this.lastTime = time;
-        this.update(dt);
+        this.update(dt || 1);
         this.draw();
         requestAnimationFrame(t => this.loop(t));
     }
@@ -267,8 +261,8 @@ export class Game {
 
             for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
                 const ft = this.floatingTexts[i];
-                ft.y += ft.vy;
-                ft.life -= 0.02;
+                ft.y += ft.vy * dt;
+                ft.life -= 0.02 * dt;
                 if (ft.life <= 0) this.floatingTexts.splice(i, 1);
             }
 
@@ -298,11 +292,14 @@ export class Game {
                 }
             });
 
-            if (this.player.y > this.camera.y + this.height + 100) {
+            // FALLING DEATH / RESET CONDITION
+            // Only trigger if character is truly below the visible area + margin
+            if (this.player.y > this.camera.y + this.height + 150) {
                 const cp = this.world.lastReachedCheckpoint;
                 this.player.x = cp.x + (cp.width / 2) - (this.player.width / 2);
                 this.player.y = cp.y - this.player.height - 20;
-                this.player.vx = 0; this.player.vy = 0;
+                this.player.vx = 0;
+                this.player.vy = 0;
                 this.player.grounded = true;
                 this.camera.y = this.player.y - this.height / 2;
                 if (this.camera.y > 0) this.camera.y = 0;
@@ -315,7 +312,8 @@ export class Game {
             }
 
             if (height >= 10000 && !this.gameWon) {
-                this.gameWon = true; this.menu.showVictory();
+                this.gameWon = true;
+                this.menu.showVictory();
             }
         }
         this.input.update();
@@ -378,22 +376,6 @@ export class Game {
         }
 
         this.ctx.restore();
-
-        if (this.gameStarted && this.world && Math.abs(this.world.wind) > 0.1) this.drawWindIndicator();
-
-        this.ctx.restore();
-    }
-
-    drawWindIndicator() {
-        const x = this.width - 60, y = 120;
-        this.ctx.save();
-        this.ctx.translate(x, y);
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        this.ctx.font = "bold 16px monospace";
-        this.ctx.textAlign = "center";
-        const txt = this.world.wind > 0 ? "💨 >>>" : "<<< 💨";
-        this.ctx.globalAlpha = 0.3 + Math.abs(this.world.wind) * 0.7;
-        this.ctx.fillText(txt, 0, 0);
         this.ctx.restore();
     }
 }
