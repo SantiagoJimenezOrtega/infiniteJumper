@@ -12,10 +12,10 @@ export class World {
         this.windTimer = 0;
         this.windStrength = 0.05;
         this.lastPowerUpY = this.highestPoint;
-        this.nextCheckpointHeight = 200; // First interval
+        this.nextCheckpointHeight = 200;
         this.firstCheckpointNotified = false;
 
-        // Track the checkpoint we actually landed on
+        // TRACKING
         this.lastReachedCheckpoint = {
             x: 0,
             y: this.game.height - 20,
@@ -28,7 +28,7 @@ export class World {
             x: 0,
             y: this.game.height - 20,
             width: this.game.width,
-            height: 20,
+            height: 25,
             type: "gold",
             isCheckpoint: true,
             id: 'start',
@@ -52,7 +52,7 @@ export class World {
             const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             const progression = Math.min(1, currentHeightMeters / 10000);
 
-            // 2. Check for checkpoint spawning
+            // Check for checkpoint spawning
             if (currentHeightMeters >= this.nextCheckpointHeight) {
                 const gap = 150;
                 const y = this.highestPoint - gap;
@@ -70,10 +70,10 @@ export class World {
                 this.platforms.push({
                     x, y,
                     width: pWidth,
-                    height: 25,
+                    height: 30,
                     type: "gold",
                     isCheckpoint: true,
-                    id: 'cp_' + y,
+                    id: 'cp_' + Math.floor(y),
                     active: true,
                     timer: 0,
                     respawnTimer: 0
@@ -198,7 +198,15 @@ export class World {
     }
 
     updateReachedCheckpoint(platform) {
-        // PERSONAL BEST CHECKPOINT
+        // DETECT FALLING BACK TO AN OLD CHECKPOINT
+        // (y is greater because it's further down the screen)
+        if (platform.y > this.lastReachedCheckpoint.y) {
+            // Player fell back to a checkpoint they already visited
+            this.game.triggerRegenerationSequence();
+            return;
+        }
+
+        // DETECT NEW RECORD CHECKPOINT
         if (platform.y < this.lastReachedCheckpoint.y) {
             this.lastReachedCheckpoint = {
                 x: platform.x,
@@ -209,7 +217,7 @@ export class World {
             this.game.soundManager.playMilestone();
 
             if (!this.firstCheckpointNotified) {
-                this.game.modalMessage("¡Checkpoint alcanzado!\n\nSi caes y regresas aquí, regeneraremos automáticamente el camino por ti.");
+                this.game.modalMessage("¡CHECKPOINT ALCANZADO!\n\nSi caes y vuelves a tocar una plataforma dorada, regeneraremos el camino automáticamente.");
                 this.firstCheckpointNotified = true;
             } else {
                 this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
@@ -222,6 +230,7 @@ export class World {
     }
 
     regenerate() {
+        // Core logic to wipe and rebuild
         this.platforms = this.platforms.filter(p => p.isCheckpoint);
         this.highestPoint = this.lastReachedCheckpoint.y;
 
