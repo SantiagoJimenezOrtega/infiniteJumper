@@ -12,20 +12,23 @@ export class World {
         this.windTimer = 0;
         this.nextCheckpointHeight = 200;
 
-        // Always track where we can respawn
+        // Track personal best height to avoid multiple "New CP" notifications
+        this.pbY = this.game.height;
+
+        // Ground platform
         this.lastReachedCheckpoint = {
             x: 0,
             y: this.game.height - 20,
             width: this.game.width,
-            id: 'start'
+            id: 'start',
+            isCheckpoint: true
         };
 
-        // Create starting floor
         this.platforms.push({
             x: 0,
             y: this.game.height - 20,
             width: this.game.width,
-            height: 30,
+            height: 35,
             type: "gold",
             isCheckpoint: true,
             id: 'start',
@@ -49,16 +52,30 @@ export class World {
             const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             const progression = Math.min(1, currentHeightMeters / 10000);
 
+            // Checkpoint Logic
             if (currentHeightMeters >= this.nextCheckpointHeight) {
                 const gap = 150;
                 const y = this.highestPoint - gap;
-                let pWidth = (currentHeightMeters <= 200) ? this.game.width : Math.max(120, this.game.width * (1 - progression));
+
+                // Scale width: First CP is 100%, then scales to 120px
+                let pWidth;
+                if (currentHeightMeters <= 200) {
+                    pWidth = this.game.width;
+                } else {
+                    const widthProgression = Math.min(1, (currentHeightMeters - 200) / 4800);
+                    pWidth = this.game.width - (widthProgression * (this.game.width - 120));
+                }
+
                 const x = (this.game.width - pWidth) / 2;
 
                 this.platforms.push({
-                    x, y, width: pWidth, height: 35,
-                    type: "gold", isCheckpoint: true,
-                    id: 'cp_' + Math.floor(y), active: true
+                    x, y,
+                    width: pWidth,
+                    height: 35,
+                    type: "gold",
+                    isCheckpoint: true,
+                    id: 'cp_' + Math.floor(y),
+                    active: true
                 });
 
                 const interval = this.getNextCheckpointInterval(currentHeightMeters);
@@ -67,18 +84,23 @@ export class World {
                 continue;
             }
 
-            const gap = WORLD_CONFIG.SPAWN_GAP_MIN + Math.random() * (WORLD_CONFIG.SPAWN_GAP_MAX - WORLD_CONFIG.SPAWN_GAP_MIN);
+            // Normal platforms
+            const gap = WORLD_CONFIG.SPAWN_GAP_MIN + Math.random() * (WORLD_CONFIG.SPAWN_GAP_MAX - WORLD_CONFIG.SPAWN_GAP_MIN + (progression * 50));
             const y = this.highestPoint - gap;
-            const pWidth = 60 + Math.random() * 60;
+
+            const pWidth = Math.max(50, 100 - (progression * 50)) + Math.random() * 50;
             const x = Math.random() * (this.game.width - pWidth);
+
+            const isPink = Math.random() < 0.1;
 
             this.platforms.push({
                 x, y, width: pWidth, height: 20,
-                type: Math.random() < 0.1 ? "pink" : "brown",
+                type: isPink ? "pink" : "brown",
                 active: true
             });
 
-            if (Math.random() < 0.6) {
+            // Drops
+            if (Math.random() < 0.7) {
                 this.collectibles.push(new Collectible(x + pWidth / 2 - 15, y - 40, "water"));
             }
 
@@ -93,21 +115,20 @@ export class World {
             this.highestPoint = topY;
             this.generatePlatforms();
         }
+
         this.collectibles.forEach(c => c.update(1 / 60));
+
+        // Dynamic cleanup
         this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 600);
-        this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height);
+        this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height + 200);
     }
 
     updateReachedCheckpoint(platform) {
-        // Update the last checkpoint we are standing on
         this.lastReachedCheckpoint = platform;
-
-        // ACTIVATE MANUAL REGEN BUTTON
         this.game.showManualRegenButton(true);
 
-        // Notify if it's a new personal best (visual only)
         const currentY = platform.y;
-        if (!this.pbY || currentY < this.pbY) {
+        if (!this.pbY || currentY < this.pbY - 100) { // Safety margin to avoid double trigger
             this.pbY = currentY;
             this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
             this.game.soundManager.playMilestone();
@@ -115,8 +136,10 @@ export class World {
     }
 
     regenerate() {
-        // CRITICAL REGIONS: CLEAR AND REBUILD
+        // FULL SCRUB: Remove everything except tracked checkpoints
         this.platforms = this.platforms.filter(p => p.isCheckpoint);
+        this.collectibles = []; // CLEAN OLD DROPS
+
         this.highestPoint = this.lastReachedCheckpoint.y;
 
         const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
@@ -125,7 +148,6 @@ export class World {
 
         this.generatePlatforms();
 
-        // Feedback
         for (let i = 0; i < 40; i++) {
             this.game.particles.spawn(this.lastReachedCheckpoint.x + this.lastReachedCheckpoint.width / 2, this.lastReachedCheckpoint.y, "#ffd700", 10);
         }
@@ -134,12 +156,24 @@ export class World {
     draw(ctx) {
         for (const p of this.platforms) {
             if (!p.active) continue;
-            ctx.fillStyle = (p.type === "gold") ? "#ffd700" : (p.type === "pink") ? "#ff00cc" : "#8b4513";
-            ctx.fillRect(p.x, p.y, p.width, p.height);
+
             if (p.type === "gold") {
-                ctx.strokeStyle = "#fff";
+                ctx.fillStyle = "#ffd700";
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = "#ffd700";
+            } else if (p.type === "pink") {
+                ctx.fillStyle = "#ff00cc";
+            } else {
+                ctx.fillStyle = "#8b4513";
+            }
+
+            ctx.fillRect(p.x, p.y, p.width, p.height);
+
+            if (p.type === "gold") {
+                ctx.strokeStyle = "#ffffff";
                 ctx.lineWidth = 3;
                 ctx.strokeRect(p.x, p.y, p.width, p.height);
+                ctx.shadowBlur = 0;
             }
         }
         this.collectibles.forEach(c => { if (c.active) c.draw(ctx); });

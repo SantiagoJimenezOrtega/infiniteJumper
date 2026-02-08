@@ -22,7 +22,7 @@ export class Player {
         this.bulletTime = false;
         this.bulletTimeEnd = 0;
         this.jumpCancelled = false;
-        this.facing = 1;
+        this.facing = 1; // 1: right, -1: left
         this.comboCount = 0;
         this.lastLandTime = 0;
         this.hasLanded = false;
@@ -45,6 +45,7 @@ export class Player {
         if (input.keys.ArrowLeft.pressed) this.facing = -1;
         if (input.keys.ArrowRight.pressed) this.facing = 1;
 
+        // Power-ups
         for (const id in this.activePowerUps) {
             if (now > this.activePowerUps[id]) delete this.activePowerUps[id];
         }
@@ -53,17 +54,16 @@ export class Player {
 
         if (this.grounded) {
             this.vx *= (this.currentSurface === "ice" ? 0.95 : PHYSICS.FRICTION);
-
             if (input.keys.ArrowDown.pressed) this.jumpCancelled = true;
 
             if (input.keys.ArrowUp.justReleased) {
-                if (!this.jumpCancelled) this.jump(0, input.keys.ArrowUp.duration);
+                if (!this.jumpCancelled) this.handleJump(0, input.keys.ArrowUp.duration);
                 this.jumpCancelled = false;
             } else if (input.keys.ArrowLeft.justReleased) {
-                if (!this.jumpCancelled) this.jump(-1, input.keys.ArrowLeft.duration);
+                if (!this.jumpCancelled) this.handleJump(-1, input.keys.ArrowLeft.duration);
                 this.jumpCancelled = false;
             } else if (input.keys.ArrowRight.justReleased) {
-                if (!this.jumpCancelled) this.jump(1, input.keys.ArrowRight.duration);
+                if (!this.jumpCancelled) this.handleJump(1, input.keys.ArrowRight.duration);
                 this.jumpCancelled = false;
             }
         } else {
@@ -72,14 +72,12 @@ export class Player {
                 if (input.keys.ArrowLeft.pressed) this.vx -= 0.2 * dt;
                 else if (input.keys.ArrowRight.pressed) this.vx += 0.2 * dt;
             } else {
-                // Bullet time mid-air dash
-                if (input.keys.ArrowUp.justReleased) { this.jump(0, input.keys.ArrowUp.duration); this.bulletTime = false; }
-                else if (input.keys.ArrowLeft.justReleased) { this.jump(-1, input.keys.ArrowLeft.duration); this.bulletTime = false; }
-                else if (input.keys.ArrowRight.justReleased) { this.jump(1, input.keys.ArrowRight.duration); this.bulletTime = false; }
+                if (input.keys.ArrowUp.justReleased) { this.handleJump(0, input.keys.ArrowUp.duration); this.bulletTime = false; }
+                else if (input.keys.ArrowLeft.justReleased) { this.handleJump(-1, input.keys.ArrowLeft.duration); this.bulletTime = false; }
+                else if (input.keys.ArrowRight.justReleased) { this.handleJump(1, input.keys.ArrowRight.duration); this.bulletTime = false; }
             }
         }
 
-        // Gravity & Jetpack
         let g = PHYSICS.GRAVITY * this.stats.gravity;
         if (this.activePowerUps.jetpack) {
             this.vy = -8;
@@ -90,11 +88,9 @@ export class Player {
 
         if (this.vy > PHYSICS.TERMINAL_VELOCITY) this.vy = PHYSICS.TERMINAL_VELOCITY;
 
-        // Move
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
-        // Wall bounce
         if (this.x < 0) { this.x = 0; this.vx *= -0.5; }
         if (this.x + this.width > this.game.width) { this.x = this.game.width - this.width; this.vx *= -0.5; }
 
@@ -102,7 +98,7 @@ export class Player {
         this.checkPlatformCollisions(dt);
     }
 
-    jump(direction, duration) {
+    handleJump(direction, duration) {
         const charge = Math.min(duration * this.stats.chargeSpeed, PLAYER_CONFIG.MAX_CHARGE) / PLAYER_CONFIG.MAX_CHARGE;
         const power = PLAYER_CONFIG.MIN_JUMP_POWER + (this.stats.jumpForce - PLAYER_CONFIG.MIN_JUMP_POWER) * Math.pow(charge, 0.8);
 
@@ -121,44 +117,21 @@ export class Player {
         this.game.soundManager.playJump();
     }
 
-    checkPlatformCollisions(dt) {
+    checkPlatformCollisions() {
         if (this.vy < 0) return;
-
-        for (const platform of this.game.world.platforms) {
-            if (!platform.active) continue;
-
-            if (this.x < platform.x + platform.width &&
-                this.x + this.width > platform.x &&
-                this.y + this.height > platform.y - 5 &&
-                this.y + this.height < platform.y + platform.height + 10) {
-
-                this.y = platform.y - this.height;
-                this.vy = 0; // CRITICAL FIX: RESET VY ON LANDING
+        for (const p of this.game.world.platforms) {
+            if (!p.active) continue;
+            if (this.x < p.x + p.width && this.x + this.width > p.x &&
+                this.y + this.height > p.y - 5 && this.y + this.height < p.y + p.height + 10) {
+                this.y = p.y - this.height;
+                this.vy = 0;
                 this.grounded = true;
-
-                if (platform.isCheckpoint) this.game.world.updateReachedCheckpoint(platform);
-
-                if (!this.hasLanded) {
-                    const now = performance.now();
-                    if (now - this.lastLandTime < 1500) {
-                        this.comboCount++;
-                        if (this.comboCount > 1) this.game.showComboPopup(this.comboCount, this.x, this.y);
-                    } else {
-                        this.comboCount = 1;
-                    }
-                    this.lastLandTime = now;
-                    this.hasLanded = true;
-                }
-
-                // Surface effects
-                if (platform.type === "pink") {
-                    this.vy = -15;
-                    this.grounded = false;
-                    this.bulletTime = true;
+                if (p.isCheckpoint) this.game.world.updateReachedCheckpoint(p);
+                this.currentSurface = (p.type === "blue") ? "ice" : "normal";
+                if (p.type === "pink") {
+                    this.vy = -15; this.grounded = false; this.bulletTime = true;
                     this.bulletTimeEnd = performance.now() + 4000;
                     this.game.soundManager.playBounce();
-                } else {
-                    this.currentSurface = (platform.type === "blue") ? "ice" : "normal";
                 }
                 return;
             }
@@ -168,11 +141,11 @@ export class Player {
     draw(ctx) {
         const input = this.game.input;
         if (input.isCharging && this.grounded && !this.jumpCancelled) {
-            const charge = Math.min(input.getCharge(input.keys.ArrowLeft.pressed ? "ArrowLeft" : input.keys.ArrowRight.pressed ? "ArrowRight" : "ArrowUp") * this.stats.chargeSpeed, PLAYER_CONFIG.MAX_CHARGE);
-            const ratio = charge / PLAYER_CONFIG.MAX_CHARGE;
+            const chargeInput = input.keys.ArrowLeft.pressed ? "ArrowLeft" : input.keys.ArrowRight.pressed ? "ArrowRight" : "ArrowUp";
+            const ratio = Math.min(input.getCharge(chargeInput) * this.stats.chargeSpeed, PLAYER_CONFIG.MAX_CHARGE) / PLAYER_CONFIG.MAX_CHARGE;
             ctx.fillStyle = "rgba(0,0,0,0.5)";
             ctx.fillRect(this.x + this.width / 2 - 30, this.y - 20, 60, 6);
-            ctx.fillStyle = (charge >= PLAYER_CONFIG.MAX_CHARGE) ? "#ff4444" : "#00ffcc";
+            ctx.fillStyle = (ratio >= 1) ? "#ff4444" : "#00ffcc";
             ctx.fillRect(this.x + this.width / 2 - 30, this.y - 20, 60 * ratio, 6);
         }
 
@@ -180,12 +153,59 @@ export class Player {
         ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
         if (this.facing === -1) ctx.scale(-1, 1);
 
-        // DRAW EMOJI SPRITE (SIMPLE & CRISP)
-        ctx.font = `${this.width * 1.2}px serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(this.emoji, 0, 0);
-
+        this.drawSprite(ctx);
         ctx.restore();
+    }
+
+    drawSprite(ctx) {
+        const size = this.width;
+        if (this.emoji === "🐸") this.drawFrog(ctx, size);
+        else if (this.emoji === "🐰") this.drawRabbit(ctx, size);
+        else if (this.emoji === " squirrel") this.drawSquirrel(ctx, size);
+        else {
+            ctx.font = `${size * 1.2}px serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(this.emoji, 0, 0);
+        }
+    }
+
+    drawFrog(ctx, size) {
+        ctx.fillStyle = "#4CAF50";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, size * 0.45, size * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(-size * 0.18, -size * 0.15, size * 0.14, 0, Math.PI * 2);
+        ctx.arc(size * 0.18, -size * 0.15, size * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.arc(-size * 0.18, -size * 0.15, size * 0.07, 0, Math.PI * 2);
+        ctx.arc(size * 0.18, -size * 0.15, size * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#2E7D32";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, size * 0.1, size * 0.2, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+    }
+
+    drawRabbit(ctx, size) {
+        ctx.fillStyle = "#FFB6C1";
+        ctx.beginPath();
+        ctx.ellipse(-size * 0.15, -size * 0.45, size * 0.08, size * 0.25, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(size * 0.15, -size * 0.45, size * 0.08, size * 0.25, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, size * 0.4, size * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.arc(-size * 0.12, -size * 0.1, size * 0.05, 0, Math.PI * 2);
+        ctx.arc(size * 0.12, -size * 0.1, size * 0.05, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
