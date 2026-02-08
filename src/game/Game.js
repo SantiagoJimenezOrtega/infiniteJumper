@@ -139,6 +139,11 @@ export class Game {
         this.menu.hideAll();
         document.getElementById("back-button").style.display = "block";
         document.getElementById("score-container").style.display = "flex";
+
+        // CRITICAL: Update HUD immediately with correct values for current difficulty
+        this.updateHighScoreUI();
+        this.updateScoreUI();
+
         const hint = document.getElementById("controls-hint");
         if (hint) {
             hint.style.display = "block";
@@ -296,8 +301,15 @@ export class Game {
                 this.showRegenPopup();
             }
 
-            const currentHigh = parseInt(localStorage.getItem(`highScore_${this.difficulty}`) || "0");
-            if (height > currentHigh) {
+            // Optimization: Track current session record without reading storage every frame
+            if (!this.currentRecordMemo || this.lastCheckedDiff !== this.difficulty) {
+                const savedHigh = localStorage.getItem(`highScore_${this.difficulty}`);
+                this.currentRecordMemo = savedHigh ? parseInt(savedHigh) : 0;
+                this.lastCheckedDiff = this.difficulty;
+            }
+
+            if (height > this.currentRecordMemo) {
+                this.currentRecordMemo = height;
                 localStorage.setItem(`highScore_${this.difficulty}`, height);
                 this.updateHighScoreUI();
             }
