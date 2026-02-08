@@ -38,11 +38,16 @@ export class Menu {
     }
 
     checkSave() {
-        this.savedDifficulty = null;
-        if (localStorage.getItem("gameState_extreme")) this.savedDifficulty = "extreme";
-        else if (localStorage.getItem("gameState_assisted")) this.savedDifficulty = "assisted";
+        // Find the last played difficulty or fallback to whatever is saved
+        this.savedDifficulty = localStorage.getItem("lastPlayedDifficulty");
 
-        if (this.savedDifficulty) {
+        // Fallback logic if lastPlayed isn't set but saves exist
+        if (!this.savedDifficulty || !localStorage.getItem(`gameState_${this.savedDifficulty}`)) {
+            if (localStorage.getItem("gameState_assisted")) this.savedDifficulty = "assisted";
+            else if (localStorage.getItem("gameState_extreme")) this.savedDifficulty = "extreme";
+        }
+
+        if (this.savedDifficulty && localStorage.getItem(`gameState_${this.savedDifficulty}`)) {
             this.buttons.continue.style.display = "block";
             this.buttons.continue.innerText = `CONTINUAR (${this.savedDifficulty.toUpperCase()})`;
         } else {

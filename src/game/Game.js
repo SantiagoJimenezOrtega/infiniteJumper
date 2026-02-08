@@ -109,11 +109,14 @@ export class Game {
             popup.style.display = "flex";
             this.menu.active = true;
             this.hasShownFirstRegenPrompt = true;
+            // Ensure last played difficulty is tracked
+            localStorage.setItem("lastPlayedDifficulty", this.difficulty);
         }
     }
 
     continueGame(diff) {
         this.difficulty = diff;
+        localStorage.setItem("lastPlayedDifficulty", diff);
         this.gameStarted = true;
         this.loadGame();
         this.setupGameUI();
@@ -121,6 +124,7 @@ export class Game {
 
     startNewGame(diff) {
         this.difficulty = diff;
+        localStorage.setItem("lastPlayedDifficulty", diff);
         this.gameStarted = true;
         this.collectedCount = 0;
         this.hasShownFirstRegenPrompt = false;
@@ -313,15 +317,19 @@ export class Game {
 
         const activeIds = Object.keys(this.player.activePowerUps);
 
+        // Stabilize layout: Don't toggle display between none/flex
+        // This prevents the browser from recalculating layout and shifting resolution
+        if (activeIds.length === 0) {
+            if (this.lastActivePowerUpCount !== 0) {
+                container.innerHTML = "";
+                this.lastActivePowerUpCount = 0;
+            }
+            return;
+        }
+
         // Only rebuild DOM if the list of powerups has changed size
         if (activeIds.length !== this.lastActivePowerUpCount) {
             this.lastActivePowerUpCount = activeIds.length;
-            if (activeIds.length === 0) {
-                container.style.display = "none";
-                container.innerHTML = "";
-                return;
-            }
-
             let html = "";
             activeIds.forEach(id => {
                 const p = Object.values(POWER_UPS).find(pu => pu.id === id);
@@ -338,7 +346,6 @@ export class Game {
                 `;
             });
             container.innerHTML = html;
-            container.style.display = "flex";
         }
 
         // Update the offsets of existing circles WITHOUT clearing innerHTML
