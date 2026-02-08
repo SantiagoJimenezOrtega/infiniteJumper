@@ -46,7 +46,7 @@ export class Game {
         this.collectedCount = 0;
 
         this.seenPowerUps = [];
-        this.hasShownFirstRegenPrompt = false; // Persistent flag for the session
+        this.hasShownFirstRegenPrompt = false;
         this.gameWon = false;
         this.floatingTexts = [];
 
@@ -70,7 +70,6 @@ export class Game {
             if (btn) btn.innerText = isMuted ? "🔇" : "🔊";
         });
 
-        // REGEN POPUP BUTTONS
         bind("regen-yes", () => {
             this.triggerRegenerationSequence();
             this.closeAllModals();
@@ -81,12 +80,10 @@ export class Game {
             this.showManualRegenButton(true);
         });
 
-        // MANUAL REGEN BUTTON (Floating)
         bind("btn-manual-regen", () => {
             this.triggerRegenerationSequence();
         });
 
-        // Global hotkey 'R'
         window.addEventListener("keydown", (e) => {
             if (e.key.toLowerCase() === 'r' && this.gameStarted && !this.menu.active) {
                 if (this.player.grounded && this.world.lastReachedCheckpoint) {
@@ -97,7 +94,6 @@ export class Game {
     }
 
     closeAllModals() {
-        // DOES NOT TOUCH POWERUP POPUPS AS REQUESTED
         const regenPopup = document.getElementById("regen-popup");
         if (regenPopup) regenPopup.style.display = "none";
         this.menu.active = false;
@@ -114,7 +110,7 @@ export class Game {
         if (popup) {
             popup.style.display = "flex";
             this.menu.active = true;
-            this.hasShownFirstRegenPrompt = true; // Mark as shown for this session
+            this.hasShownFirstRegenPrompt = true;
         }
     }
 
@@ -129,7 +125,7 @@ export class Game {
         this.difficulty = diff;
         this.gameStarted = true;
         this.collectedCount = 0;
-        this.hasShownFirstRegenPrompt = false; // Reset on new game
+        this.hasShownFirstRegenPrompt = false;
         localStorage.removeItem(`gameState_${this.difficulty}`);
         this.world = new World(this);
         this.player = new Player(this);
@@ -255,10 +251,7 @@ export class Game {
             this.camera.update();
             this.world.update();
 
-            // SENSITIVE REGEN BUTTON: Only show if grounded and contacting a checkpoint
-            if (!this.player.grounded) {
-                this.showManualRegenButton(false);
-            }
+            if (!this.player.grounded) this.showManualRegenButton(false);
 
             for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
                 const ft = this.floatingTexts[i];
@@ -299,7 +292,7 @@ export class Game {
                 this.player.grounded = true;
                 this.camera.y = this.player.y - this.height / 2;
                 if (this.camera.y > 0) this.camera.y = 0;
-                // No automatic popup on fall, just show the button via World
+                this.showRegenPopup();
             }
 
             const savedHigh = localStorage.getItem(`highScore_${this.difficulty}`);
@@ -322,24 +315,33 @@ export class Game {
         if (!container) return;
 
         let html = "";
-        for (const [id, timeLeft] of Object.entries(this.player.activePowerUps)) {
-            if (timeLeft <= 0) continue;
-            const p = Object.values(POWER_UPS).find(pu => pu.id === id);
-            if (!p) continue;
+        const activeEntries = Object.entries(this.player.activePowerUps);
 
-            const ratio = Math.min(1, timeLeft / p.duration);
+        activeEntries.forEach(([id, timeLeft]) => {
+            if (timeLeft <= 0) return;
+            // Robust search for the PowerUp definition
+            const puKey = Object.keys(POWER_UPS).find(key => POWER_UPS[key].id === id);
+            const p = POWER_UPS[puKey];
+            if (!p) return;
+
+            const ratio = Math.max(0, Math.min(1, timeLeft / p.duration));
             const dash = 150.8;
             const offset = dash * (1 - ratio);
 
             html += `
-                <div class="pu-timer-item">
-                    <svg class="pu-timer-circle-svg"><circle class="pu-timer-circle-bg" cx="27" cy="27" r="24"></circle>
-                    <circle class="pu-timer-circle-fill" cx="27" cy="27" r="24" style="stroke-dasharray: ${dash}; stroke-dashoffset: ${offset}; stroke: ${p.color};"></circle></svg>
-                    <span class="pu-timer-icon">${p.emoji}</span>
+                <div class="pu-timer-item" style="border: 2px solid ${p.color};">
+                    <svg class="pu-timer-circle-svg">
+                        <circle class="pu-timer-circle-bg" cx="27" cy="27" r="24"></circle>
+                        <circle class="pu-timer-circle-fill" cx="27" cy="27" r="24" 
+                                style="stroke-dasharray: 150.8; stroke-dashoffset: ${offset}; stroke: ${p.color}; stroke-width: 4;"></circle>
+                    </svg>
+                    <span class="pu-timer-icon" style="text-shadow: 0 0 10px ${p.color};">${p.emoji}</span>
                 </div>
             `;
-        }
+        });
+
         container.innerHTML = html;
+        container.style.display = html ? "flex" : "none";
     }
 
     checkCollision(a, b) {
@@ -348,10 +350,7 @@ export class Game {
     }
 
     showPowerUpPopup(p) { this.modalTemplate(p.emoji, p.name, p.description); }
-    modalMessage(msg) {
-        // Small helper, doesn't use the full blocking modal if we want it to be light
-        this.modalTemplate("🏆", "Aviso", msg);
-    }
+    modalMessage(msg) { this.modalTemplate("🏆", "Aviso", msg); }
 
     modalTemplate(emoji, title, desc) {
         const popup = document.getElementById("powerup-popup");
@@ -365,8 +364,6 @@ export class Game {
         const closeBtn = document.getElementById("pu-popup-close");
         const close = (e) => {
             if (e) e.preventDefault();
-            this.closeAllModals(); // Simplified modal logic
-            // Note: Powerup popups are not touched, they close via this helper
             popup.style.display = "none";
             this.menu.active = false;
         };
