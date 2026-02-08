@@ -20,40 +20,63 @@ export class Player {
 
         this.currentSurface = "normal";
         this.bulletTime = false;
-        this.bulletTimeEnd = 0;
+        this.bulletTimeDuration = 0;
         this.jumpCancelled = false;
-        this.facing = 1; // 1: right, -1: left
+        this.facing = 1;
         this.comboCount = 0;
         this.lastLandTime = 0;
         this.hasLanded = false;
 
-        this.animationFrame = 0;
-        this.animationTimer = 0;
-        this.animationSpeed = 0.1;
-        this.activePowerUps = {};
+        this.activePowerUps = {}; // Stores remaining duration in MS
     }
 
     applyPowerUp(id, duration) {
-        const now = performance.now();
-        this.activePowerUps[id] = now + duration;
+        // Stack durations if already active
+        if (this.activePowerUps[id]) {
+            this.activePowerUps[id] += duration;
+        } else {
+            this.activePowerUps[id] = duration;
+        }
+        this.game.soundManager.playCollect();
     }
 
     update(dt) {
         const input = this.game.input;
-        const now = performance.now();
+        // Convert dt (frames relative to 60fps) to MS: dt * 16.66
+        const dtMS = dt * 16.66;
 
         if (input.keys.ArrowLeft.pressed) this.facing = -1;
         if (input.keys.ArrowRight.pressed) this.facing = 1;
 
-        // Power-ups
+        // Cleanup expired power-ups using game-time (dt) instead of system clock
         for (const id in this.activePowerUps) {
-            if (now > this.activePowerUps[id]) delete this.activePowerUps[id];
+            this.activePowerUps[id] -= dtMS;
+            if (this.activePowerUps[id] <= 0) delete this.activePowerUps[id];
         }
 
-        if (this.bulletTime && now > this.bulletTimeEnd) this.bulletTime = false;
+        if (this.bulletTime) {
+            this.bulletTimeDuration -= dtMS;
+            if (this.bulletTimeDuration <= 0) this.bulletTime = false;
+        }
+
+        // MAGNET EFFECT
+        if (this.activePowerUps.magnet) {
+            this.game.world.collectibles.forEach(c => {
+                if (c.active) {
+                    const dx = (this.x + this.width / 2) - (c.x + 15);
+                    const dy = (this.y + this.height / 2) - (c.y + 15);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 250) {
+                        const pull = 10 * dt;
+                        c.x += (dx / dist) * pull;
+                        c.y += (dy / dist) * pull;
+                    }
+                }
+            });
+        }
 
         if (this.grounded) {
-            this.vx *= (this.currentSurface === "ice" ? 0.95 : PHYSICS.FRICTION);
+            this.vx *= (this.currentSurface === "ice" ? 0.97 : PHYSICS.FRICTION);
             if (input.keys.ArrowDown.pressed) this.jumpCancelled = true;
 
             if (input.keys.ArrowUp.justReleased) {
@@ -69,8 +92,8 @@ export class Player {
         } else {
             this.vx *= PHYSICS.AIR_RESISTANCE;
             if (!this.bulletTime) {
-                if (input.keys.ArrowLeft.pressed) this.vx -= 0.2 * dt;
-                else if (input.keys.ArrowRight.pressed) this.vx += 0.2 * dt;
+                if (input.keys.ArrowLeft.pressed) this.vx -= 0.3 * dt;
+                else if (input.keys.ArrowRight.pressed) this.vx += 0.3 * dt;
             } else {
                 if (input.keys.ArrowUp.justReleased) { this.handleJump(0, input.keys.ArrowUp.duration); this.bulletTime = false; }
                 else if (input.keys.ArrowLeft.justReleased) { this.handleJump(-1, input.keys.ArrowLeft.duration); this.bulletTime = false; }
@@ -78,12 +101,17 @@ export class Player {
             }
         }
 
-        let g = PHYSICS.GRAVITY * this.stats.gravity;
+        // GRAVITY & JETPACK
+        let gravityMult = this.stats.gravity;
+        if (this.activePowerUps.boots) gravityMult *= 0.45; // Enhanced low gravity
+
         if (this.activePowerUps.jetpack) {
-            this.vy = -8;
-            if (Math.random() < 0.2) this.game.particles.spawn(this.x + this.width / 2, this.y + this.height, "#33ccff", 1);
+            this.vy = -12; // Continuous upward force
+            if (Math.random() < 0.5) {
+                this.game.particles.spawn(this.x + this.width / 2, this.y + this.height, "#33ccff", 3);
+            }
         } else {
-            this.vy += g * dt;
+            this.vy += (PHYSICS.GRAVITY * gravityMult) * dt;
         }
 
         if (this.vy > PHYSICS.TERMINAL_VELOCITY) this.vy = PHYSICS.TERMINAL_VELOCITY;
@@ -95,7 +123,7 @@ export class Player {
         if (this.x + this.width > this.game.width) { this.x = this.game.width - this.width; this.vx *= -0.5; }
 
         this.grounded = false;
-        this.checkPlatformCollisions(dt);
+        this.checkPlatformCollisions();
     }
 
     handleJump(direction, duration) {
@@ -108,12 +136,12 @@ export class Player {
             this.facing = direction;
         } else {
             this.vx = 0;
-            this.vy = -power * 1.2;
+            this.vy = -power * 1.3;
         }
 
         this.grounded = false;
         this.hasLanded = false;
-        this.game.particles.spawn(this.x + this.width / 2, this.y + this.height, "#ffffff", 10);
+        this.game.particles.spawn(this.x + this.width / 2, this.y + this.height, "#ffffff", 12);
         this.game.soundManager.playJump();
     }
 
@@ -123,15 +151,21 @@ export class Player {
             if (!p.active) continue;
             if (this.x < p.x + p.width && this.x + this.width > p.x &&
                 this.y + this.height > p.y - 5 && this.y + this.height < p.y + p.height + 10) {
+
                 this.y = p.y - this.height;
                 this.vy = 0;
                 this.grounded = true;
+
                 if (p.isCheckpoint) this.game.world.updateReachedCheckpoint(p);
                 this.currentSurface = (p.type === "blue") ? "ice" : "normal";
+
                 if (p.type === "pink") {
-                    this.vy = -15; this.grounded = false; this.bulletTime = true;
-                    this.bulletTimeEnd = performance.now() + 4000;
+                    this.vy = -18; // Strong bouncy floor
+                    this.grounded = false;
+                    this.bulletTime = true;
+                    this.bulletTimeDuration = 4000;
                     this.game.soundManager.playBounce();
+                    this.game.particles.spawn(this.x + this.width / 2, this.y + this.height, "#ff00cc", 20);
                 }
                 return;
             }
@@ -140,6 +174,18 @@ export class Player {
 
     draw(ctx) {
         const input = this.game.input;
+
+        // Visual timers for active Power-ups (Pauses when menu is open)
+        let barYOffset = 0;
+        for (const [id, timeLeft] of Object.entries(this.activePowerUps)) {
+            if (timeLeft > 0) {
+                const ratio = Math.min(1, timeLeft / 5000); // Scale based on 5s visual bar
+                ctx.fillStyle = (id === "jetpack") ? "#33ccff" : (id === "magnet") ? "#ff3333" : (id === "boots") ? "#ffcc00" : "#00ffcc";
+                ctx.fillRect(this.x, this.y - 12 - barYOffset, this.width * ratio, 4);
+                barYOffset += 6;
+            }
+        }
+
         if (input.isCharging && this.grounded && !this.jumpCancelled) {
             const chargeInput = input.keys.ArrowLeft.pressed ? "ArrowLeft" : input.keys.ArrowRight.pressed ? "ArrowRight" : "ArrowUp";
             const ratio = Math.min(input.getCharge(chargeInput) * this.stats.chargeSpeed, PLAYER_CONFIG.MAX_CHARGE) / PLAYER_CONFIG.MAX_CHARGE;
@@ -152,7 +198,6 @@ export class Player {
         ctx.save();
         ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
         if (this.facing === -1) ctx.scale(-1, 1);
-
         this.drawSprite(ctx);
         ctx.restore();
     }
@@ -160,8 +205,7 @@ export class Player {
     drawSprite(ctx) {
         const size = this.width;
         if (this.emoji === "🐸") this.drawFrog(ctx, size);
-        else if (this.emoji === "🐰") this.drawRabbit(ctx, size);
-        else if (this.emoji === " squirrel") this.drawSquirrel(ctx, size);
+        else if (this.emoji === "🐰" || this.emoji === "🐇") this.drawRabbit(ctx, size);
         else {
             ctx.font = `${size * 1.2}px serif`;
             ctx.textAlign = "center";
