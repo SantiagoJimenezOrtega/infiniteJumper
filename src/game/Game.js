@@ -49,6 +49,7 @@ export class Game {
         this.hasShownFirstRegenPrompt = false;
         this.gameWon = false;
         this.floatingTexts = [];
+        this.lastActivePowerUpCount = -1;
 
         this.setupEventListeners();
         window.addEventListener("resize", this.handleResize);
@@ -310,45 +311,48 @@ export class Game {
         const container = document.getElementById("active-powerups");
         if (!container) return;
 
-        const activePowerUps = this.player.activePowerUps;
-        const activeIds = Object.keys(activePowerUps);
+        const activeIds = Object.keys(this.player.activePowerUps);
 
-        if (activeIds.length === 0) {
-            container.style.display = "none";
-            container.innerHTML = "";
-            return;
-        }
+        // Only rebuild DOM if the list of powerups has changed size
+        if (activeIds.length !== this.lastActivePowerUpCount) {
+            this.lastActivePowerUpCount = activeIds.length;
+            if (activeIds.length === 0) {
+                container.style.display = "none";
+                container.innerHTML = "";
+                return;
+            }
 
-        let html = "";
-        activeIds.forEach(id => {
-            const timeLeft = activePowerUps[id];
-            if (timeLeft <= 0) return;
-
-            const p = Object.values(POWER_UPS).find(pu => pu.id === id);
-            if (!p) return;
-
-            const ratio = Math.max(0, Math.min(1, timeLeft / p.duration));
-            const dash = 150.8;
-            const offset = dash * (1 - ratio);
-
-            html += `
-                <div class="pu-timer-item" style="border: 3px solid ${p.color};">
-                    <svg class="pu-timer-circle-svg">
-                        <circle class="pu-timer-circle-bg" cx="27" cy="27" r="24"></circle>
-                        <circle class="pu-timer-circle-fill" cx="27" cy="27" r="24" 
-                                style="stroke-dasharray: 151; stroke-dashoffset: ${offset}; stroke: ${p.color};"></circle>
-                    </svg>
-                    <span class="pu-timer-icon">${p.emoji}</span>
-                </div>
-            `;
-        });
-
-        if (html === "") {
-            container.style.display = "none";
-        } else {
-            container.style.display = "flex";
+            let html = "";
+            activeIds.forEach(id => {
+                const p = Object.values(POWER_UPS).find(pu => pu.id === id);
+                if (!p) return;
+                html += `
+                    <div id="pu-timer-${id}" class="pu-timer-item" style="border: 3px solid ${p.color};">
+                        <svg class="pu-timer-circle-svg" viewBox="0 0 66 66">
+                            <circle class="pu-timer-circle-bg" cx="33" cy="33" r="28"></circle>
+                            <circle id="pu-fill-${id}" class="pu-timer-circle-fill" cx="33" cy="33" r="28" 
+                                    style="stroke-dasharray: 176; stroke-dashoffset: 0; stroke: ${p.color};"></circle>
+                        </svg>
+                        <span class="pu-timer-icon">${p.emoji}</span>
+                    </div>
+                `;
+            });
             container.innerHTML = html;
+            container.style.display = "flex";
         }
+
+        // Update the offsets of existing circles WITHOUT clearing innerHTML
+        activeIds.forEach(id => {
+            const timeLeft = this.player.activePowerUps[id];
+            const p = Object.values(POWER_UPS).find(pu => pu.id === id);
+            const fillEl = document.getElementById(`pu-fill-${id}`);
+            if (fillEl && p) {
+                const ratio = Math.max(0, Math.min(1, timeLeft / p.duration));
+                const circumference = 176; // 2 * PI * 28 approx
+                const offset = circumference * (1 - ratio);
+                fillEl.style.strokeDashoffset = offset;
+            }
+        });
     }
 
     checkCollision(a, b) {
