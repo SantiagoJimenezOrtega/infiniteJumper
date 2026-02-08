@@ -12,7 +12,6 @@ export class World {
         this.windTimer = 0;
         this.nextCheckpointHeight = 200;
 
-        // Track personal best height to avoid multiple "New CP" notifications
         this.pbY = this.game.height;
 
         // Ground platform
@@ -40,11 +39,9 @@ export class World {
 
     getNextCheckpointInterval(height) {
         if (height < 1000) return 200;
-        if (height < 2000) return 250;
-        if (height < 3000) return 500;
+        if (height < 2000) return 400; // Increased to avoid crowding
         if (height < 5000) return 1000;
-        if (height < 10000) return 2500;
-        return 5000;
+        return 2500;
     }
 
     generatePlatforms() {
@@ -52,36 +49,44 @@ export class World {
             const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             const progression = Math.min(1, currentHeightMeters / 10000);
 
-            // Checkpoint Logic
+            // CHECKPOINT GENERATION (FIXED OVERLAP BUG)
             if (currentHeightMeters >= this.nextCheckpointHeight) {
-                const gap = 150;
-                const y = this.highestPoint - gap;
+                // Ensure we don't have another checkpoint too close (within 100px)
+                const tooClose = this.platforms.some(p => p.isCheckpoint && Math.abs(p.y - (this.highestPoint - 150)) < 100);
 
-                // Scale width: First CP is 100%, then scales to 120px
-                let pWidth;
-                if (currentHeightMeters <= 200) {
-                    pWidth = this.game.width;
+                if (!tooClose) {
+                    const gap = 150;
+                    const y = this.highestPoint - gap;
+
+                    let pWidth;
+                    if (currentHeightMeters <= 200) {
+                        pWidth = this.game.width;
+                    } else {
+                        const widthProgression = Math.min(1, (currentHeightMeters - 200) / 4800);
+                        pWidth = this.game.width - (widthProgression * (this.game.width - 120));
+                    }
+
+                    const x = (this.game.width - pWidth) / 2;
+
+                    this.platforms.push({
+                        x, y,
+                        width: pWidth,
+                        height: 35,
+                        type: "gold",
+                        isCheckpoint: true,
+                        id: 'cp_' + Math.floor(y) + '_' + Date.now(),
+                        active: true
+                    });
+
+                    // Advance next checkpoint target firmly
+                    const interval = this.getNextCheckpointInterval(currentHeightMeters);
+                    this.nextCheckpointHeight = (Math.floor(currentHeightMeters / interval) + 1) * interval;
+                    this.highestPoint = y;
+                    continue;
                 } else {
-                    const widthProgression = Math.min(1, (currentHeightMeters - 200) / 4800);
-                    pWidth = this.game.width - (widthProgression * (this.game.width - 120));
+                    // Skip this specific check to avoid stuck loops
+                    this.nextCheckpointHeight += 10;
                 }
-
-                const x = (this.game.width - pWidth) / 2;
-
-                this.platforms.push({
-                    x, y,
-                    width: pWidth,
-                    height: 35,
-                    type: "gold",
-                    isCheckpoint: true,
-                    id: 'cp_' + Math.floor(y),
-                    active: true
-                });
-
-                const interval = this.getNextCheckpointInterval(currentHeightMeters);
-                this.nextCheckpointHeight = (Math.floor(currentHeightMeters / interval) + 1) * interval;
-                this.highestPoint = y;
-                continue;
             }
 
             // Normal platforms
@@ -99,7 +104,6 @@ export class World {
                 active: true
             });
 
-            // Drops
             if (Math.random() < 0.7) {
                 this.collectibles.push(new Collectible(x + pWidth / 2 - 15, y - 40, "water"));
             }
@@ -117,18 +121,18 @@ export class World {
         }
 
         this.collectibles.forEach(c => c.update(1 / 60));
-
-        // Dynamic cleanup
         this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 600);
         this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height + 200);
     }
 
     updateReachedCheckpoint(platform) {
+        if (this.lastReachedCheckpoint && this.lastReachedCheckpoint.id === platform.id) return;
+
         this.lastReachedCheckpoint = platform;
         this.game.showManualRegenButton(true);
 
         const currentY = platform.y;
-        if (!this.pbY || currentY < this.pbY - 100) { // Safety margin to avoid double trigger
+        if (!this.pbY || currentY < this.pbY - 100) {
             this.pbY = currentY;
             this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
             this.game.soundManager.playMilestone();
@@ -136,10 +140,11 @@ export class World {
     }
 
     regenerate() {
-        // FULL SCRUB: Remove everything except tracked checkpoints
-        this.platforms = this.platforms.filter(p => p.isCheckpoint);
-        this.collectibles = []; // CLEAN OLD DROPS
+        // CLEANUP: Keep ONLY checkpoints that are below or at the current one
+        // This prevents "future" checkpoints from persisting if they were bugged
+        this.platforms = this.platforms.filter(p => p.isCheckpoint && p.y >= this.lastReachedCheckpoint.y);
 
+        this.collectibles = [];
         this.highestPoint = this.lastReachedCheckpoint.y;
 
         const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
