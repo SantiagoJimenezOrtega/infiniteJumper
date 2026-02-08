@@ -49,7 +49,6 @@ export class Game {
         this.milestones = [100, 250, 500, 1000, 5000, 10000];
 
         this.seenPowerUps = JSON.parse(localStorage.getItem("seenPowerUps") || "[]");
-        this.tutorialStep = 0;
         this.gameWon = false;
         this.floatingTexts = [];
 
@@ -60,11 +59,9 @@ export class Game {
     setupEventListeners() {
         const backBtn = document.getElementById("back-button");
         if (backBtn) {
-            const newBack = backBtn.cloneNode(true);
-            backBtn.parentNode.replaceChild(newBack, backBtn);
-            const goBack = (e) => { e.preventDefault(); e.stopPropagation(); this.resetGame(); };
-            newBack.addEventListener("click", goBack);
-            newBack.addEventListener("touchstart", goBack, { passive: false });
+            const handleBack = (e) => { e.preventDefault(); e.stopPropagation(); this.resetGame(); };
+            backBtn.onclick = handleBack;
+            backBtn.ontouchstart = handleBack;
         }
 
         const muteBtn = document.getElementById("mute-button");
@@ -74,8 +71,8 @@ export class Game {
                 const isMuted = this.soundManager.toggleMute();
                 muteBtn.innerText = isMuted ? "🔇" : "🔊";
             };
-            muteBtn.addEventListener("click", toggle);
-            muteBtn.addEventListener("touchstart", toggle, { passive: false });
+            muteBtn.onclick = toggle;
+            muteBtn.ontouchstart = toggle;
         }
     }
 
@@ -204,10 +201,13 @@ export class Game {
     }
 
     triggerRegenerationSequence() {
-        // UNIFIED REGENERATION FLOW
         this.world.regenerate();
-        this.modalMessage("¡MENSAJE DEL CIELO!\n\nParece que has regresado a un checkpoint. Hemos reconstruido el camino hacia arriba para que tengas una oportunidad fresca.");
+        this.modalMessage("¡MENSAJE DEL CIELO!\n\nHas regresado a un checkpoint. Hemos reconstruido el camino hacia arriba para que tengas una oportunidad fresca.");
         this.soundManager.playBounce();
+        // Visual feedback
+        for (let i = 0; i < 50; i++) {
+            this.particles.spawn(this.player.x + this.player.width / 2, this.player.y, "#ffd700", 8);
+        }
     }
 
     start() {
@@ -226,10 +226,11 @@ export class Game {
     update(dt) {
         if (!this.gameStarted) return;
         this.background.update(dt);
-        if (this.player && this.player.bulletTime) dt *= 0.5;
+        let actualDt = dt;
+        if (this.player && this.player.bulletTime) actualDt *= 0.5;
 
         if (!this.menu.active) {
-            this.player.update(dt);
+            this.player.update(actualDt);
             this.particles.update();
             this.camera.update();
             this.world.update();
@@ -248,9 +249,7 @@ export class Game {
                 if (c.active && this.checkCollision(this.player, c)) {
                     c.active = false;
                     if (c.type === "water") {
-                        const combo = this.player.comboCount || 1;
-                        const multiPower = this.player.activePowerUps.multi ? 2 : 1;
-                        const amount = 1 * combo * multiPower;
+                        const amount = (this.player.comboCount || 1) * (this.player.activePowerUps.multi ? 2 : 1);
                         this.collectedCount += amount;
                         this.soundManager.playCollect();
                         this.updateScoreUI();
@@ -269,22 +268,15 @@ export class Game {
                 }
             });
 
-            // FALLING INTO THE VOID
             if (this.player.y > this.camera.y + this.height + 100) {
                 const cp = this.world.lastReachedCheckpoint;
                 this.player.x = cp.x + (cp.width / 2) - (this.player.width / 2);
                 this.player.y = cp.y - this.player.height - 20;
-                this.player.vx = 0;
-                this.player.vy = 0;
+                this.player.vx = 0; this.player.vy = 0;
                 this.player.grounded = true;
                 this.camera.y = this.player.y - this.height / 2;
                 if (this.camera.y > 0) this.camera.y = 0;
-
-                if (cp.id !== 'start') {
-                    this.triggerRegenerationSequence();
-                } else {
-                    this.world.generatePlatforms();
-                }
+                if (cp.id !== 'start') this.triggerRegenerationSequence();
             }
 
             if (height > this.highScore) {
@@ -294,8 +286,7 @@ export class Game {
             }
 
             if (height >= 10000 && !this.gameWon) {
-                this.gameWon = true;
-                this.menu.showVictory();
+                this.gameWon = true; this.menu.showVictory();
             }
         }
         this.input.update();
@@ -306,41 +297,48 @@ export class Game {
             a.y < b.y + b.height && a.y + a.height > b.y;
     }
 
-    showPowerUpPopup(p) {
-        const popup = document.getElementById("powerup-popup");
-        document.getElementById("pu-popup-emoji").innerText = p.emoji;
-        document.getElementById("pu-popup-name").innerText = p.name;
-        document.getElementById("pu-popup-desc").innerText = p.description;
-        popup.style.display = "flex";
-        this.menu.active = true;
-        document.getElementById("pu-popup-close").onclick = () => {
-            popup.style.display = "none";
-            this.menu.active = false;
-        };
-    }
+    showPowerUpPopup(p) { this.modalTemplate(p.emoji, p.name, p.description); }
+    modalMessage(msg) { this.modalTemplate("🏆", "MENSAJE DEL CIELO", msg); }
 
-    modalMessage(msg) {
+    modalTemplate(emoji, title, desc) {
         const popup = document.getElementById("powerup-popup");
-        document.getElementById("pu-popup-emoji").innerText = "🏆";
-        document.getElementById("pu-popup-name").innerText = "MENSAJE DEL CIELO";
-        document.getElementById("pu-popup-desc").innerText = msg;
+        document.getElementById("pu-popup-emoji").innerText = emoji;
+        document.getElementById("pu-popup-name").innerText = title;
+        document.getElementById("pu-popup-desc").innerText = desc;
         popup.style.display = "flex";
         this.menu.active = true;
-        document.getElementById("pu-popup-close").onclick = () => {
+
+        const closeBtn = document.getElementById("pu-popup-close");
+        const close = (e) => {
+            if (e) e.preventDefault();
             popup.style.display = "none";
             this.menu.active = false;
         };
+        closeBtn.onclick = close;
+        closeBtn.ontouchstart = close;
     }
 
     draw() {
         this.ctx.save();
         this.ctx.scale(this.scale, this.scale);
         this.background.draw(this.ctx);
+
         this.ctx.save();
         this.ctx.translate(0, -this.camera.y);
+
         this.world.draw(this.ctx);
         this.player.draw(this.ctx);
         this.particles.draw(this.ctx);
+
+        // TRAJECTORY RESTORED
+        if (this.difficulty === "assisted" && this.input.isCharging && !this.player.jumpCancelled) {
+            let dir = 0, dur = 0;
+            if (this.input.keys.ArrowLeft.pressed) { dir = -1; dur = this.input.getCharge("ArrowLeft"); }
+            else if (this.input.keys.ArrowRight.pressed) { dir = 1; dur = this.input.getCharge("ArrowRight"); }
+            else if (this.input.keys.ArrowUp.pressed) { dir = 0; dur = this.input.getCharge("ArrowUp"); }
+            this.trajectoryPreview.draw(this.ctx, this.player, dir, dur);
+        }
+
         for (const ft of this.floatingTexts) {
             this.ctx.save();
             this.ctx.globalAlpha = ft.life;
@@ -349,7 +347,25 @@ export class Game {
             this.ctx.fillText(ft.text, ft.x, ft.y);
             this.ctx.restore();
         }
+
         this.ctx.restore();
+
+        // HUD Effects
+        if (this.gameStarted && Math.abs(this.world.wind) > 0.1) this.drawWindIndicator();
+
+        this.ctx.restore();
+    }
+
+    drawWindIndicator() {
+        const x = this.width - 60, y = 120;
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        this.ctx.font = "bold 16px monospace";
+        this.ctx.textAlign = "center";
+        const txt = this.world.wind > 0 ? "💨 >>>" : "<<< 💨";
+        this.ctx.globalAlpha = 0.3 + Math.abs(this.world.wind) * 0.7;
+        this.ctx.fillText(txt, 0, 0);
         this.ctx.restore();
     }
 }
