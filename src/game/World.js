@@ -10,11 +10,13 @@ export class World {
 
         this.wind = 0;
         this.windTimer = 0;
-        this.nextCheckpointHeight = 200;
 
+        // Checkpoint tracking
+        this.nextCheckpointHeight = 200;
+        this.lastPowerUpY = this.game.height;
         this.pbY = this.game.height;
 
-        // Ground platform
+        // Ground platform (Initial Checkpoint)
         this.lastReachedCheckpoint = {
             x: 0,
             y: this.game.height - 20,
@@ -38,65 +40,66 @@ export class World {
     }
 
     getNextCheckpointInterval(height) {
-        if (height < 1000) return 200;
-        if (height < 2000) return 400; // Increased to avoid crowding
+        if (height < 1000) return 300; // Increased spacing
+        if (height < 2000) return 500;
         if (height < 5000) return 1000;
-        return 2500;
+        return 2000;
     }
 
     generatePlatforms() {
-        while (this.highestPoint > this.game.camera.y - this.game.height * 2) {
+        // Safety: Limit generation iterations to prevent infinite loops
+        let iterations = 0;
+        const maxIterations = 100;
+
+        while (this.highestPoint > this.game.camera.y - this.game.height * 2 && iterations < maxIterations) {
+            iterations++;
             const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             const progression = Math.min(1, currentHeightMeters / 10000);
 
-            // CHECKPOINT GENERATION (FIXED OVERLAP BUG)
+            // 1. CHECKPOINT GENERATION (FIXED SPACING)
             if (currentHeightMeters >= this.nextCheckpointHeight) {
-                // Ensure we don't have another checkpoint too close (within 100px)
-                const tooClose = this.platforms.some(p => p.isCheckpoint && Math.abs(p.y - (this.highestPoint - 150)) < 100);
+                const gap = 160;
+                const y = this.highestPoint - gap;
 
-                if (!tooClose) {
-                    const gap = 150;
-                    const y = this.highestPoint - gap;
-
-                    let pWidth;
-                    if (currentHeightMeters <= 200) {
-                        pWidth = this.game.width;
-                    } else {
-                        const widthProgression = Math.min(1, (currentHeightMeters - 200) / 4800);
-                        pWidth = this.game.width - (widthProgression * (this.game.width - 120));
-                    }
-
-                    const x = (this.game.width - pWidth) / 2;
-
-                    this.platforms.push({
-                        x, y,
-                        width: pWidth,
-                        height: 35,
-                        type: "gold",
-                        isCheckpoint: true,
-                        id: 'cp_' + Math.floor(y) + '_' + Date.now(),
-                        active: true
-                    });
-
-                    // Advance next checkpoint target firmly
-                    const interval = this.getNextCheckpointInterval(currentHeightMeters);
-                    this.nextCheckpointHeight = (Math.floor(currentHeightMeters / interval) + 1) * interval;
-                    this.highestPoint = y;
-                    continue;
+                let pWidth;
+                if (currentHeightMeters <= 200) {
+                    pWidth = this.game.width;
                 } else {
-                    // Skip this specific check to avoid stuck loops
-                    this.nextCheckpointHeight += 10;
+                    const widthProgression = Math.min(1, (currentHeightMeters - 200) / 4800);
+                    pWidth = this.game.width - (widthProgression * (this.game.width - 120));
                 }
+
+                const x = (this.game.width - pWidth) / 2;
+
+                // Unique ID with height and timestamp to avoid collisions
+                const id = `cp_${Math.floor(y)}_${Date.now()}`;
+
+                this.platforms.push({
+                    x, y,
+                    width: pWidth,
+                    height: 35,
+                    type: "gold",
+                    isCheckpoint: true,
+                    id: id,
+                    active: true
+                });
+
+                // Set next checkpoint target firmly ahead
+                const interval = this.getNextCheckpointInterval(currentHeightMeters);
+                this.nextCheckpointHeight = Math.floor(currentHeightMeters / interval + 1) * interval;
+
+                this.highestPoint = y;
+                continue; // Skip normal platform generation for this Y
             }
 
-            // Normal platforms
-            const gap = WORLD_CONFIG.SPAWN_GAP_MIN + Math.random() * (WORLD_CONFIG.SPAWN_GAP_MAX - WORLD_CONFIG.SPAWN_GAP_MIN + (progression * 50));
+            // 2. NORMAL PLATFORM GENERATION
+            const gap = WORLD_CONFIG.SPAWN_GAP_MIN + Math.random() * (WORLD_CONFIG.SPAWN_GAP_MAX - WORLD_CONFIG.SPAWN_GAP_MIN + (progression * 60));
             const y = this.highestPoint - gap;
 
-            const pWidth = Math.max(50, 100 - (progression * 50)) + Math.random() * 50;
+            const pWidth = Math.max(45, 110 - (progression * 60)) + Math.random() * 40;
             const x = Math.random() * (this.game.width - pWidth);
 
-            const isPink = Math.random() < 0.1;
+            const isPink = Math.random() < 0.12;
 
             this.platforms.push({
                 x, y, width: pWidth, height: 20,
@@ -104,8 +107,39 @@ export class World {
                 active: true
             });
 
-            if (Math.random() < 0.7) {
+            // 3. POWER-UPS & DROPS SPAWNING (RESTORED)
+            const player = this.game.player;
+            const activePUs = (player && player.activePowerUps) ? player.activePowerUps : {};
+            const distSinceLastPU = Math.abs(this.lastPowerUpY - y) / 10;
+
+            let spawnedPowerUp = false;
+
+            // Chance to spawn a power-up if enough distance has passed
+            if (distSinceLastPU > 150) {
+                const spawnChance = 0.15 + (progression * 0.1);
+                if (Math.random() < spawnChance || distSinceLastPU > 400) {
+                    const availableTypes = Object.keys(POWER_UPS).filter(key => {
+                        const pu = POWER_UPS[key];
+                        return !activePUs[pu.id];
+                    });
+
+                    if (availableTypes.length > 0) {
+                        const randomKey = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+                        const pu = POWER_UPS[randomKey];
+                        this.collectibles.push(new Collectible(x + pWidth / 2 - 15, y - 50, pu.id));
+                        this.lastPowerUpY = y;
+                        spawnedPowerUp = true;
+                    }
+                }
+            }
+
+            // Spawn normal drops if no power-up was spawned
+            if (!spawnedPowerUp && Math.random() < 0.75) {
                 this.collectibles.push(new Collectible(x + pWidth / 2 - 15, y - 40, "water"));
+                // Small chance for a second drop
+                if (Math.random() < 0.2) {
+                    this.collectibles.push(new Collectible(x + pWidth / 2 + 10, y - 60, "water"));
+                }
             }
 
             this.highestPoint = y;
@@ -115,12 +149,15 @@ export class World {
     update() {
         let topY = this.game.height;
         for (const p of this.platforms) { if (p.y < topY) topY = p.y; }
+
         if (topY > this.game.camera.y - this.game.height * 2) {
             this.highestPoint = topY;
             this.generatePlatforms();
         }
 
         this.collectibles.forEach(c => c.update(1 / 60));
+
+        // Clean up distant platforms and collectibles
         this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 600);
         this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height + 200);
     }
@@ -140,16 +177,14 @@ export class World {
     }
 
     regenerate() {
-        // CLEANUP: Keep ONLY checkpoints that are below or at the current one
-        // This prevents "future" checkpoints from persisting if they were bugged
+        // Keep only current and past checkpoints
         this.platforms = this.platforms.filter(p => p.isCheckpoint && p.y >= this.lastReachedCheckpoint.y);
-
         this.collectibles = [];
         this.highestPoint = this.lastReachedCheckpoint.y;
 
         const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
         const interval = this.getNextCheckpointInterval(currentHeightMeters);
-        this.nextCheckpointHeight = (Math.floor(currentHeightMeters / interval) + 1) * interval;
+        this.nextCheckpointHeight = Math.floor(currentHeightMeters / interval + 1) * interval;
 
         this.generatePlatforms();
 
