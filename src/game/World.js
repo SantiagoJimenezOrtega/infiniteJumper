@@ -11,21 +11,14 @@ export class World {
         this.wind = 0;
         this.windTimer = 0;
 
-        // Checkpoint tracking
         this.nextCheckpointHeight = 200;
         this.lastPowerUpY = this.game.height;
         this.pbY = this.game.height;
 
-        // Ground platform (Initial Checkpoint)
-        this.lastReachedCheckpoint = {
-            x: 0,
-            y: this.game.height - 20,
-            width: this.game.width,
-            id: 'start',
-            isCheckpoint: true
-        };
+        this.lastReachedCheckpoint = null;
 
-        this.platforms.push({
+        // Ground platform (Initial Checkpoint)
+        const ground = {
             x: 0,
             y: this.game.height - 20,
             width: this.game.width,
@@ -34,20 +27,21 @@ export class World {
             isCheckpoint: true,
             id: 'start',
             active: true
-        });
+        };
+        this.platforms.push(ground);
+        this.lastReachedCheckpoint = ground;
 
         this.generatePlatforms();
     }
 
     getNextCheckpointInterval(height) {
-        if (height < 1000) return 300; // Increased spacing
+        if (height < 1000) return 300;
         if (height < 2000) return 500;
         if (height < 5000) return 1000;
         return 2000;
     }
 
     generatePlatforms() {
-        // Safety: Limit generation iterations to prevent infinite loops
         let iterations = 0;
         const maxIterations = 100;
 
@@ -56,7 +50,6 @@ export class World {
             const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             const progression = Math.min(1, currentHeightMeters / 10000);
 
-            // 1. CHECKPOINT GENERATION (FIXED SPACING)
             if (currentHeightMeters >= this.nextCheckpointHeight) {
                 const gap = 160;
                 const y = this.highestPoint - gap;
@@ -70,9 +63,7 @@ export class World {
                 }
 
                 const x = (this.game.width - pWidth) / 2;
-
-                // Unique ID with height and timestamp to avoid collisions
-                const id = `cp_${Math.floor(y)}_${Date.now()}`;
+                const id = `cp_${Math.floor(y)}_${iterations}`;
 
                 this.platforms.push({
                     x, y,
@@ -84,15 +75,13 @@ export class World {
                     active: true
                 });
 
-                // Set next checkpoint target firmly ahead
                 const interval = this.getNextCheckpointInterval(currentHeightMeters);
                 this.nextCheckpointHeight = Math.floor(currentHeightMeters / interval + 1) * interval;
 
                 this.highestPoint = y;
-                continue; // Skip normal platform generation for this Y
+                continue;
             }
 
-            // 2. NORMAL PLATFORM GENERATION
             const gap = WORLD_CONFIG.SPAWN_GAP_MIN + Math.random() * (WORLD_CONFIG.SPAWN_GAP_MAX - WORLD_CONFIG.SPAWN_GAP_MIN + (progression * 60));
             const y = this.highestPoint - gap;
 
@@ -107,39 +96,19 @@ export class World {
                 active: true
             });
 
-            // 3. POWER-UPS & DROPS SPAWNING (RESTORED)
-            const player = this.game.player;
-            const activePUs = (player && player.activePowerUps) ? player.activePowerUps : {};
+            // POWER-UPS SPAWNING
             const distSinceLastPU = Math.abs(this.lastPowerUpY - y) / 10;
-
-            let spawnedPowerUp = false;
-
-            // Chance to spawn a power-up if enough distance has passed
             if (distSinceLastPU > 150) {
                 const spawnChance = 0.15 + (progression * 0.1);
                 if (Math.random() < spawnChance || distSinceLastPU > 400) {
-                    const availableTypes = Object.keys(POWER_UPS).filter(key => {
-                        const pu = POWER_UPS[key];
-                        return !activePUs[pu.id];
-                    });
-
-                    if (availableTypes.length > 0) {
-                        const randomKey = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-                        const pu = POWER_UPS[randomKey];
-                        this.collectibles.push(new Collectible(x + pWidth / 2 - 15, y - 50, pu.id));
-                        this.lastPowerUpY = y;
-                        spawnedPowerUp = true;
-                    }
+                    const availableTypes = Object.keys(POWER_UPS);
+                    const randomKey = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+                    const pu = POWER_UPS[randomKey];
+                    this.collectibles.push(new Collectible(x + pWidth / 2 - 15, y - 50, pu.id));
+                    this.lastPowerUpY = y;
                 }
-            }
-
-            // Spawn normal drops if no power-up was spawned
-            if (!spawnedPowerUp && Math.random() < 0.75) {
+            } else if (Math.random() < 0.75) {
                 this.collectibles.push(new Collectible(x + pWidth / 2 - 15, y - 40, "water"));
-                // Small chance for a second drop
-                if (Math.random() < 0.2) {
-                    this.collectibles.push(new Collectible(x + pWidth / 2 + 10, y - 60, "water"));
-                }
             }
 
             this.highestPoint = y;
@@ -157,7 +126,6 @@ export class World {
 
         this.collectibles.forEach(c => c.update(1 / 60));
 
-        // Clean up distant platforms and collectibles
         this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 600);
         this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height + 200);
     }
@@ -177,7 +145,6 @@ export class World {
     }
 
     regenerate() {
-        // Keep only current and past checkpoints
         this.platforms = this.platforms.filter(p => p.isCheckpoint && p.y >= this.lastReachedCheckpoint.y);
         this.collectibles = [];
         this.highestPoint = this.lastReachedCheckpoint.y;
@@ -199,8 +166,6 @@ export class World {
 
             if (p.type === "gold") {
                 ctx.fillStyle = "#ffd700";
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = "#ffd700";
             } else if (p.type === "pink") {
                 ctx.fillStyle = "#ff00cc";
             } else {
@@ -213,7 +178,6 @@ export class World {
                 ctx.strokeStyle = "#ffffff";
                 ctx.lineWidth = 3;
                 ctx.strokeRect(p.x, p.y, p.width, p.height);
-                ctx.shadowBlur = 0;
             }
         }
         this.collectibles.forEach(c => { if (c.active) c.draw(ctx); });

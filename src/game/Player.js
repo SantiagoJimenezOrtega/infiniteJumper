@@ -14,7 +14,6 @@ export class Player {
         const equipped = localStorage.getItem("equippedAnimal") || "frog";
         const animal = SHOP_ANIMALS.find(a => a.id === equipped) || SHOP_ANIMALS[0];
 
-        this.color = animal.color;
         this.emoji = animal.emoji;
         this.stats = animal.stats;
 
@@ -27,28 +26,24 @@ export class Player {
         this.lastLandTime = 0;
         this.hasLanded = false;
 
-        this.activePowerUps = {}; // Stores remaining duration in MS
+        this.activePowerUps = {};
     }
 
     applyPowerUp(id, duration) {
-        // Stack durations if already active
         if (this.activePowerUps[id]) {
             this.activePowerUps[id] += duration;
         } else {
             this.activePowerUps[id] = duration;
         }
-        this.game.soundManager.playCollect();
     }
 
     update(dt) {
         const input = this.game.input;
-        // Convert dt (frames relative to 60fps) to MS: dt * 16.66
         const dtMS = dt * 16.66;
 
         if (input.keys.ArrowLeft.pressed) this.facing = -1;
         if (input.keys.ArrowRight.pressed) this.facing = 1;
 
-        // Cleanup expired power-ups using game-time (dt) instead of system clock
         for (const id in this.activePowerUps) {
             this.activePowerUps[id] -= dtMS;
             if (this.activePowerUps[id] <= 0) delete this.activePowerUps[id];
@@ -101,12 +96,11 @@ export class Player {
             }
         }
 
-        // GRAVITY & JETPACK
         let gravityMult = this.stats.gravity;
-        if (this.activePowerUps.boots) gravityMult *= 0.45; // Enhanced low gravity
+        if (this.activePowerUps.boots) gravityMult *= 0.45;
 
         if (this.activePowerUps.jetpack) {
-            this.vy = -12; // Continuous upward force
+            this.vy = -12;
             if (Math.random() < 0.5) {
                 this.game.particles.spawn(this.x + this.width / 2, this.y + this.height, "#33ccff", 3);
             }
@@ -160,7 +154,7 @@ export class Player {
                 this.currentSurface = (p.type === "blue") ? "ice" : "normal";
 
                 if (p.type === "pink") {
-                    this.vy = -18; // Strong bouncy floor
+                    this.vy = -18;
                     this.grounded = false;
                     this.bulletTime = true;
                     this.bulletTimeDuration = 4000;
@@ -174,17 +168,6 @@ export class Player {
 
     draw(ctx) {
         const input = this.game.input;
-
-        // Visual timers for active Power-ups (Pauses when menu is open)
-        let barYOffset = 0;
-        for (const [id, timeLeft] of Object.entries(this.activePowerUps)) {
-            if (timeLeft > 0) {
-                const ratio = Math.min(1, timeLeft / 5000); // Scale based on 5s visual bar
-                ctx.fillStyle = (id === "jetpack") ? "#33ccff" : (id === "magnet") ? "#ff3333" : (id === "boots") ? "#ffcc00" : "#00ffcc";
-                ctx.fillRect(this.x, this.y - 12 - barYOffset, this.width * ratio, 4);
-                barYOffset += 6;
-            }
-        }
 
         if (input.isCharging && this.grounded && !this.jumpCancelled) {
             const chargeInput = input.keys.ArrowLeft.pressed ? "ArrowLeft" : input.keys.ArrowRight.pressed ? "ArrowRight" : "ArrowUp";
