@@ -69,89 +69,90 @@ canvas {
 
 #back-button {
     position: absolute;
-    top: inherit;
+    top: 15px;
     left: 15px;
     background: var(--bg-surface);
-    border: 1px solid var(--border-glass);
+    border: 2px solid var(--accent-cyan);
     color: white;
-    padding: 10px 20px;
-    border-radius: 30px;
+    padding: 14px 28px;
+    border-radius: 40px;
     cursor: pointer;
-    font-weight: 700;
+    font-weight: 800;
+    font-size: 1.2rem;
     pointer-events: auto;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    z-index: 20;
+    z-index: 1001;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
 }
 
 #score-container {
     position: absolute;
-    top: inherit;
+    top: 15px;
     right: 15px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 15px;
     background: var(--bg-surface);
-    padding: 10px 20px;
-    border-radius: 40px;
-    border: 1px solid var(--border-glass);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    padding: 14px 28px;
+    border-radius: 50px;
+    border: 2px solid var(--accent-cyan);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     font-weight: 900;
-    font-size: 1rem;
+    font-size: 1.2rem;
     pointer-events: auto;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    z-index: 1001;
 }
 
 @media (max-width: 450px) {
     #back-button {
-        width: 44px;
-        height: 44px;
+        width: 60px;
+        height: 60px;
         padding: 0;
         border-radius: 50%;
-        font-size: 0;
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 0;
     }
 
     #back-button::before {
         content: '⬅';
-        font-size: 20px;
+        font-size: 28px;
     }
 
     #score-container {
-        padding: 8px 15px;
-        font-size: 0.85rem;
-        gap: 8px;
-    }
-
-    #high-score {
-        display: none;
-        /* Hide highscore to save space on tiny screens */
+        padding: 12px 20px;
+        font-size: 1.1rem;
+        gap: 10px;
     }
 }
 
 #back-button:hover {
-    background: hsla(0, 0%, 100%, 0.1);
-    transform: translateX(5px);
-    border-color: var(--accent-cyan);
+    background: var(--accent-cyan);
+    color: var(--bg-dark);
+    transform: scale(1.1);
 }
 
 #controls-hint {
     position: absolute;
-    bottom: 40px;
+    bottom: 50px;
     left: 50%;
     transform: translateX(-50%);
-    color: var(--text-muted);
-    font-size: 14px;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
     text-align: center;
-    width: 80%;
-    max-width: 400px;
+    width: 90%;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
     background: rgba(0, 0, 0, 0.4);
-    padding: 8px 16px;
+    padding: 10px 20px;
     border-radius: 20px;
+    backdrop-filter: blur(4px);
+    max-width: 400px;
     pointer-events: none;
     animation: fadeInOut 4s infinite;
 }
