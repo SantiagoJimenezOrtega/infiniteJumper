@@ -145,4 +145,3 @@ export class World {
         this.collectibles.forEach(c => { if (c.active) c.draw(ctx); });
     }
 }
-破
