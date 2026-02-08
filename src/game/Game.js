@@ -46,6 +46,7 @@ export class Game {
         this.collectedCount = 0;
 
         this.seenPowerUps = [];
+        this.hasShownFirstRegenPrompt = false; // Persistent flag for the session
         this.gameWon = false;
         this.floatingTexts = [];
 
@@ -96,11 +97,9 @@ export class Game {
     }
 
     closeAllModals() {
-        const popups = ["regen-popup", "powerup-popup"];
-        popups.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = "none";
-        });
+        // DOES NOT TOUCH POWERUP POPUPS AS REQUESTED
+        const regenPopup = document.getElementById("regen-popup");
+        if (regenPopup) regenPopup.style.display = "none";
         this.menu.active = false;
     }
 
@@ -110,11 +109,12 @@ export class Game {
     }
 
     showRegenPopup() {
-        if (this.menu.active) return;
+        if (this.menu.active || this.hasShownFirstRegenPrompt) return;
         const popup = document.getElementById("regen-popup");
         if (popup) {
             popup.style.display = "flex";
             this.menu.active = true;
+            this.hasShownFirstRegenPrompt = true; // Mark as shown for this session
         }
     }
 
@@ -129,15 +129,12 @@ export class Game {
         this.difficulty = diff;
         this.gameStarted = true;
         this.collectedCount = 0;
+        this.hasShownFirstRegenPrompt = false; // Reset on new game
         localStorage.removeItem(`gameState_${this.difficulty}`);
         this.world = new World(this);
         this.player = new Player(this);
         this.camera = new Camera(this);
         this.setupGameUI();
-
-        setTimeout(() => {
-            if (this.player.grounded) this.showRegenPopup();
-        }, 800);
     }
 
     setupGameUI() {
@@ -258,7 +255,10 @@ export class Game {
             this.camera.update();
             this.world.update();
 
-            if (!this.player.grounded) this.showManualRegenButton(false);
+            // SENSITIVE REGEN BUTTON: Only show if grounded and contacting a checkpoint
+            if (!this.player.grounded) {
+                this.showManualRegenButton(false);
+            }
 
             for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
                 const ft = this.floatingTexts[i];
@@ -299,7 +299,7 @@ export class Game {
                 this.player.grounded = true;
                 this.camera.y = this.player.y - this.height / 2;
                 if (this.camera.y > 0) this.camera.y = 0;
-                this.showRegenPopup();
+                // No automatic popup on fall, just show the button via World
             }
 
             const savedHigh = localStorage.getItem(`highScore_${this.difficulty}`);
@@ -348,7 +348,10 @@ export class Game {
     }
 
     showPowerUpPopup(p) { this.modalTemplate(p.emoji, p.name, p.description); }
-    modalMessage(msg) { this.modalTemplate("🏆", "Aviso", msg); }
+    modalMessage(msg) {
+        // Small helper, doesn't use the full blocking modal if we want it to be light
+        this.modalTemplate("🏆", "Aviso", msg);
+    }
 
     modalTemplate(emoji, title, desc) {
         const popup = document.getElementById("powerup-popup");
@@ -362,7 +365,10 @@ export class Game {
         const closeBtn = document.getElementById("pu-popup-close");
         const close = (e) => {
             if (e) e.preventDefault();
-            this.closeAllModals();
+            this.closeAllModals(); // Simplified modal logic
+            // Note: Powerup popups are not touched, they close via this helper
+            popup.style.display = "none";
+            this.menu.active = false;
         };
         closeBtn.onclick = close;
         closeBtn.ontouchstart = close;

@@ -131,16 +131,23 @@ export class World {
     }
 
     updateReachedCheckpoint(platform) {
-        if (this.lastReachedCheckpoint && this.lastReachedCheckpoint.id === platform.id) return;
+        // ALWAYS show the button if we are on a checkpoint
+        this.game.showManualRegenButton(true);
+
+        if (this.lastReachedCheckpoint && this.lastReachedCheckpoint.id === platform.id) {
+            return;
+        }
 
         this.lastReachedCheckpoint = platform;
-        this.game.showManualRegenButton(true);
 
         const currentY = platform.y;
         if (!this.pbY || currentY < this.pbY - 100) {
             this.pbY = currentY;
             this.game.showComboPopup("CHECKPOINT!", platform.x, platform.y);
             this.game.soundManager.playMilestone();
+
+            // Trigger the special prompt ONLY the first time we reach a NEW checkpoint
+            this.game.showRegenPopup();
         }
     }
 
