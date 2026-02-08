@@ -25,12 +25,17 @@
     <!-- Game HUD -->
     <div id="ui-layer">
       <button id="back-button" style="display: none;">⬅ Menú</button>
+
       <div id="score-container" style="display: none;">
         <div id="drops-score" style="color: #00ffff; margin-right: 15px;">💧 0</div>
         <div id="score">Altura: 0m</div>
         <div id="high-score">Record: 0m</div>
         <button id="mute-button" style="background:none; border:none; font-size: 24px; cursor: pointer;">🔊</button>
       </div>
+
+      <!-- POWER-UP HUD (Moved inside UI layer for better layering) -->
+      <div id="active-powerups" class="active-powerups-container"></div>
+
       <div id="milestone-notification" style="display: none;">🏆 ¡100m Alcanzados!</div>
       <div id="controls-hint" style="display: none;">Manten presionado Izq/Der/Centro para saltar</div>
     </div>
@@ -64,9 +69,7 @@
         <div class="shop-wallet">💧 <span id="shop-wallet-amount">0</span></div>
       </div>
       <div class="shop-layout">
-        <div id="shop-grid" class="shop-list-sidebar">
-          <!-- Los emojis de los animales se inyectan via JS -->
-        </div>
+        <div id="shop-grid" class="shop-list-sidebar"></div>
         <div id="shop-details" class="shop-details-panel">
           <div class="empty-selection">SELECCIONA UN ANIMAL</div>
         </div>
@@ -77,8 +80,8 @@
     <div id="powerup-popup" class="powerup-popup" style="display: none;">
       <div class="pu-popup-content">
         <div id="pu-popup-emoji" class="pu-popup-emoji">🧲</div>
-        <h2 id="pu-popup-name">IMÁN DE GOTAS</h2>
-        <p id="pu-popup-desc">¡Atrae todas las gotas cercanas!</p>
+        <h2 id="pu-popup-name">POWER UP</h2>
+        <p id="pu-popup-desc">Descripción aquí.</p>
         <button id="pu-popup-close" class="menu-btn primary">¡ENTENDIDO!</button>
       </div>
     </div>
@@ -88,8 +91,7 @@
       <div class="pu-popup-content">
         <div class="pu-popup-emoji">🔄</div>
         <h2>¿REGENERAR MUNDO?</h2>
-        <p>Parece que has vuelto a este checkpoint. ¿Quieres reconstruir el camino hacia arriba o prefieres intentar
-          subir por el que ya estaba?</p>
+        <p>¿Quieres reconstruir el camino hacia arriba o prefieres intentar subir por el que ya estaba?</p>
         <div class="menu-buttons">
           <button id="regen-yes" class="menu-btn primary">SÍ, REGENERAR</button>
           <button id="regen-no" class="menu-btn">NO, DEJAR ASÍ</button>
@@ -97,19 +99,15 @@
       </div>
     </div>
 
-    <!-- ACTIVE POWERUPS UI -->
-    <div id="active-powerups" class="active-powerups-container"></div>
-
     <!-- MANUAL REGEN BUTTON (Floating) -->
     <button id="btn-manual-regen" class="menu-btn primary"
-      style="display: none; position: fixed; bottom: 20%; left: 50%; transform: translateX(-50%); z-index: 100; padding: 15px 30px; border-radius: 50px; box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4); border: 3px solid #fff;">
+      style="display: none; position: fixed; bottom: 20%; left: 50%; transform: translateX(-50%); z-index: 100; padding: 15px 30px; border-radius: 50px;">
       🔄 REGENERAR CAMINO
     </button>
 
     <!-- VICTORY SCREEN -->
     <div id="victory-screen" class="menu-screen" style="display: none;">
       <h1 class="victory-title">🌍 ¡MUNDO RESTAURADO!</h1>
-      <p>Has alcanzado los 10,000m y traído el agua de vuelta.</p>
       <button id="btn-victory-continue" class="menu-btn primary">VOLVER AL MENÚ</button>
     </div>
   </div>

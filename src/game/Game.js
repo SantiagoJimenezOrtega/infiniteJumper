@@ -63,7 +63,6 @@ export class Game {
         };
 
         bind("back-button", () => this.resetGame());
-
         bind("mute-button", () => {
             const isMuted = this.soundManager.toggleMute();
             const btn = document.getElementById("mute-button");
@@ -72,17 +71,15 @@ export class Game {
 
         bind("regen-yes", () => {
             this.triggerRegenerationSequence();
-            this.closeAllModals();
+            this.closeRegenModal();
         });
 
         bind("regen-no", () => {
-            this.closeAllModals();
+            this.closeRegenModal();
             this.showManualRegenButton(true);
         });
 
-        bind("btn-manual-regen", () => {
-            this.triggerRegenerationSequence();
-        });
+        bind("btn-manual-regen", () => this.triggerRegenerationSequence());
 
         window.addEventListener("keydown", (e) => {
             if (e.key.toLowerCase() === 'r' && this.gameStarted && !this.menu.active) {
@@ -93,7 +90,7 @@ export class Game {
         });
     }
 
-    closeAllModals() {
+    closeRegenModal() {
         const regenPopup = document.getElementById("regen-popup");
         if (regenPopup) regenPopup.style.display = "none";
         this.menu.active = false;
@@ -153,7 +150,7 @@ export class Game {
         document.getElementById("back-button").style.display = "none";
         document.getElementById("score-container").style.display = "none";
         document.getElementById("btn-manual-regen").style.display = "none";
-        this.closeAllModals();
+        this.closeRegenModal();
         this.menu.showScreen("main");
     }
 
@@ -212,8 +209,7 @@ export class Game {
         this.floatingTexts.push({
             text: isNaN(count) ? count : `${count}x Combo!`,
             x: x + 15, y: y - 20,
-            life: 1.0, vy: -2,
-            color: "#ffcc00"
+            life: 1.0, vy: -2, color: "#ffcc00"
         });
     }
 
@@ -295,8 +291,7 @@ export class Game {
                 this.showRegenPopup();
             }
 
-            const savedHigh = localStorage.getItem(`highScore_${this.difficulty}`);
-            const currentHigh = savedHigh ? parseInt(savedHigh) : 0;
+            const currentHigh = parseInt(localStorage.getItem(`highScore_${this.difficulty}`) || "0");
             if (height > currentHigh) {
                 localStorage.setItem(`highScore_${this.difficulty}`, height);
                 this.updateHighScoreUI();
@@ -306,6 +301,7 @@ export class Game {
                 this.gameWon = true; this.menu.showVictory();
             }
         }
+
         this.updatePowerUpUI();
         this.input.update();
     }
@@ -314,14 +310,21 @@ export class Game {
         const container = document.getElementById("active-powerups");
         if (!container) return;
 
-        let html = "";
-        const activeEntries = Object.entries(this.player.activePowerUps);
+        const activePowerUps = this.player.activePowerUps;
+        const activeIds = Object.keys(activePowerUps);
 
-        activeEntries.forEach(([id, timeLeft]) => {
+        if (activeIds.length === 0) {
+            container.style.display = "none";
+            container.innerHTML = "";
+            return;
+        }
+
+        let html = "";
+        activeIds.forEach(id => {
+            const timeLeft = activePowerUps[id];
             if (timeLeft <= 0) return;
-            // Robust search for the PowerUp definition
-            const puKey = Object.keys(POWER_UPS).find(key => POWER_UPS[key].id === id);
-            const p = POWER_UPS[puKey];
+
+            const p = Object.values(POWER_UPS).find(pu => pu.id === id);
             if (!p) return;
 
             const ratio = Math.max(0, Math.min(1, timeLeft / p.duration));
@@ -329,19 +332,23 @@ export class Game {
             const offset = dash * (1 - ratio);
 
             html += `
-                <div class="pu-timer-item" style="border: 2px solid ${p.color};">
+                <div class="pu-timer-item" style="border: 3px solid ${p.color};">
                     <svg class="pu-timer-circle-svg">
                         <circle class="pu-timer-circle-bg" cx="27" cy="27" r="24"></circle>
                         <circle class="pu-timer-circle-fill" cx="27" cy="27" r="24" 
-                                style="stroke-dasharray: 150.8; stroke-dashoffset: ${offset}; stroke: ${p.color}; stroke-width: 4;"></circle>
+                                style="stroke-dasharray: 151; stroke-dashoffset: ${offset}; stroke: ${p.color};"></circle>
                     </svg>
-                    <span class="pu-timer-icon" style="text-shadow: 0 0 10px ${p.color};">${p.emoji}</span>
+                    <span class="pu-timer-icon">${p.emoji}</span>
                 </div>
             `;
         });
 
-        container.innerHTML = html;
-        container.style.display = html ? "flex" : "none";
+        if (html === "") {
+            container.style.display = "none";
+        } else {
+            container.style.display = "flex";
+            container.innerHTML = html;
+        }
     }
 
     checkCollision(a, b) {

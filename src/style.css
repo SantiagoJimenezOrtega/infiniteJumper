@@ -748,55 +748,55 @@ canvas {
 
 /* CIRCULAR TIMERS */
 .active-powerups-container {
-    position: fixed;
+    position: absolute;
     right: 20px;
-    /* Move to right to avoid clashing with other UI */
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
     gap: 15px;
     pointer-events: none;
-    z-index: 100;
+    z-index: 1000;
 }
 
 .pu-timer-item {
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.6);
     border-radius: 50%;
     animation: slideInRight 0.3s ease-out;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
 }
 
 .pu-timer-circle-svg {
     position: absolute;
-    top: -2px;
-    left: -2px;
-    width: 54px;
-    height: 54px;
+    top: -3px;
+    left: -3px;
+    width: 66px;
+    height: 66px;
     transform: rotate(-90deg);
 }
 
 .pu-timer-circle-bg {
     fill: none;
     stroke: rgba(255, 255, 255, 0.1);
-    stroke-width: 3;
+    stroke-width: 4;
 }
 
 .pu-timer-circle-fill {
     fill: none;
     stroke: var(--accent-cyan);
-    stroke-width: 3;
+    stroke-width: 4;
     stroke-linecap: round;
     transition: stroke-dashoffset 0.1s linear;
 }
 
 .pu-timer-icon {
-    font-size: 24px;
+    font-size: 28px;
     z-index: 2;
 }
 
