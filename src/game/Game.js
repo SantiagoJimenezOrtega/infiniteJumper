@@ -45,7 +45,6 @@ export class Game {
         this.highScore = 0;
         this.collectedCount = 0;
 
-        // Session-based "seen" trackers to ensure intuitiveness
         this.seenPowerUps = [];
         this.gameWon = false;
         this.floatingTexts = [];
@@ -55,61 +54,54 @@ export class Game {
     }
 
     setupEventListeners() {
-        const backBtn = document.getElementById("back-button");
-        if (backBtn) {
-            const handleBack = (e) => { e.preventDefault(); this.resetGame(); };
-            backBtn.onclick = handleBack;
-            backBtn.ontouchstart = handleBack;
-        }
+        const bind = (id, action) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.onclick = (e) => { e.preventDefault(); action(e); };
+            el.ontouchstart = (e) => { e.preventDefault(); action(e); };
+        };
 
-        const muteBtn = document.getElementById("mute-button");
-        if (muteBtn) {
-            const toggle = (e) => {
-                e.preventDefault();
-                const isMuted = this.soundManager.toggleMute();
-                muteBtn.innerText = isMuted ? "🔇" : "🔊";
-            };
-            muteBtn.onclick = toggle;
-            muteBtn.ontouchstart = toggle;
-        }
+        bind("back-button", () => this.resetGame());
+
+        bind("mute-button", () => {
+            const isMuted = this.soundManager.toggleMute();
+            const btn = document.getElementById("mute-button");
+            if (btn) btn.innerText = isMuted ? "🔇" : "🔊";
+        });
 
         // REGEN POPUP BUTTONS
-        const btnYes = document.getElementById("regen-yes");
-        if (btnYes) {
-            btnYes.onclick = (e) => {
-                e.preventDefault();
-                this.triggerRegenerationSequence();
-                document.getElementById("regen-popup").style.display = "none";
-                this.menu.active = false;
-            };
-        }
-        const btnNo = document.getElementById("regen-no");
-        if (btnNo) {
-            btnNo.onclick = (e) => {
-                e.preventDefault();
-                document.getElementById("regen-popup").style.display = "none";
-                this.menu.active = false;
-                this.showManualRegenButton(true); // Keep button as failsafe
-            };
-        }
+        bind("regen-yes", () => {
+            this.triggerRegenerationSequence();
+            this.closeAllModals();
+        });
+
+        bind("regen-no", () => {
+            this.closeAllModals();
+            this.showManualRegenButton(true);
+        });
 
         // MANUAL REGEN BUTTON (Floating)
-        const regenBtn = document.getElementById("btn-manual-regen");
-        if (regenBtn) {
-            regenBtn.onclick = (e) => {
-                e.preventDefault();
-                this.triggerRegenerationSequence();
-            };
-        }
+        bind("btn-manual-regen", () => {
+            this.triggerRegenerationSequence();
+        });
 
         // Global hotkey 'R'
         window.addEventListener("keydown", (e) => {
             if (e.key.toLowerCase() === 'r' && this.gameStarted && !this.menu.active) {
-                if (this.player.grounded && this.world.lastReachedCheckpoint && this.world.lastReachedCheckpoint.isCheckpoint) {
+                if (this.player.grounded && this.world.lastReachedCheckpoint) {
                     this.triggerRegenerationSequence();
                 }
             }
         });
+    }
+
+    closeAllModals() {
+        const popups = ["regen-popup", "powerup-popup"];
+        popups.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "none";
+        });
+        this.menu.active = false;
     }
 
     showManualRegenButton(show) {
@@ -118,9 +110,12 @@ export class Game {
     }
 
     showRegenPopup() {
-        if (this.menu.active) return; // Don't interrupt other modals
-        document.getElementById("regen-popup").style.display = "flex";
-        this.menu.active = true;
+        if (this.menu.active) return;
+        const popup = document.getElementById("regen-popup");
+        if (popup) {
+            popup.style.display = "flex";
+            this.menu.active = true;
+        }
     }
 
     continueGame(diff) {
@@ -140,10 +135,9 @@ export class Game {
         this.camera = new Camera(this);
         this.setupGameUI();
 
-        // Ensure regen button/popup works on start floor
         setTimeout(() => {
             if (this.player.grounded) this.showRegenPopup();
-        }, 500);
+        }, 800);
     }
 
     setupGameUI() {
@@ -166,7 +160,7 @@ export class Game {
         document.getElementById("back-button").style.display = "none";
         document.getElementById("score-container").style.display = "none";
         document.getElementById("btn-manual-regen").style.display = "none";
-        document.getElementById("regen-popup").style.display = "none";
+        this.closeAllModals();
         this.menu.showScreen("main");
     }
 
@@ -201,9 +195,8 @@ export class Game {
             });
             this.collectedCount = state.collectedCount || 0;
             this.player = new Player(this);
-            const p = state.player;
-            this.player.x = p.x; this.player.y = p.y;
-            this.player.vx = p.vx; this.player.vy = p.vy;
+            this.player.x = state.player.x; this.player.y = state.player.y;
+            this.player.vx = state.player.vx; this.player.vy = state.player.vy;
             this.camera = new Camera(this);
             this.camera.y = state.camera.y;
             return true;
@@ -306,7 +299,7 @@ export class Game {
                 this.player.grounded = true;
                 this.camera.y = this.player.y - this.height / 2;
                 if (this.camera.y > 0) this.camera.y = 0;
-                this.showRegenPopup(); // Show prompt after fall
+                this.showRegenPopup();
             }
 
             const savedHigh = localStorage.getItem(`highScore_${this.difficulty}`);
@@ -335,16 +328,13 @@ export class Game {
             if (!p) continue;
 
             const ratio = Math.min(1, timeLeft / p.duration);
-            const dash = 150.8; // 2 * PI * 24
+            const dash = 150.8;
             const offset = dash * (1 - ratio);
 
             html += `
                 <div class="pu-timer-item">
-                    <svg class="pu-timer-circle-svg">
-                        <circle class="pu-timer-circle-bg" cx="27" cy="27" r="24"></circle>
-                        <circle class="pu-timer-circle-fill" cx="27" cy="27" r="24" 
-                                style="stroke-dasharray: ${dash}; stroke-dashoffset: ${offset}; stroke: ${p.color};"></circle>
-                    </svg>
+                    <svg class="pu-timer-circle-svg"><circle class="pu-timer-circle-bg" cx="27" cy="27" r="24"></circle>
+                    <circle class="pu-timer-circle-fill" cx="27" cy="27" r="24" style="stroke-dasharray: ${dash}; stroke-dashoffset: ${offset}; stroke: ${p.color};"></circle></svg>
                     <span class="pu-timer-icon">${p.emoji}</span>
                 </div>
             `;
@@ -372,25 +362,17 @@ export class Game {
         const closeBtn = document.getElementById("pu-popup-close");
         const close = (e) => {
             if (e) e.preventDefault();
-            popup.style.display = "none";
-            this.menu.active = false;
+            this.closeAllModals();
         };
         closeBtn.onclick = close;
         closeBtn.ontouchstart = close;
     }
 
     draw() {
-        this.ctx.save();
-        this.ctx.scale(this.scale, this.scale);
+        this.ctx.save(); this.ctx.scale(this.scale, this.scale);
         this.background.draw(this.ctx);
-
-        this.ctx.save();
-        this.ctx.translate(0, -this.camera.y);
-
-        this.world.draw(this.ctx);
-        this.player.draw(this.ctx);
-        this.particles.draw(this.ctx);
-
+        this.ctx.save(); this.ctx.translate(0, -this.camera.y);
+        this.world.draw(this.ctx); this.player.draw(this.ctx); this.particles.draw(this.ctx);
         if (this.difficulty === "assisted" && this.input.isCharging && !this.player.jumpCancelled) {
             let dir = 0, dur = 0;
             if (this.input.keys.ArrowLeft.pressed) { dir = -1; dur = this.input.getCharge("ArrowLeft"); }
@@ -398,17 +380,10 @@ export class Game {
             else if (this.input.keys.ArrowUp.pressed) { dir = 0; dur = this.input.getCharge("ArrowUp"); }
             this.trajectoryPreview.draw(this.ctx, this.player, dir, dur);
         }
-
         for (const ft of this.floatingTexts) {
-            this.ctx.save();
-            this.ctx.globalAlpha = ft.life;
-            this.ctx.fillStyle = ft.color;
-            this.ctx.font = `bold 18px Arial`;
-            this.ctx.fillText(ft.text, ft.x, ft.y);
-            this.ctx.restore();
+            this.ctx.save(); this.ctx.globalAlpha = ft.life; this.ctx.fillStyle = ft.color;
+            this.ctx.font = `bold 18px Arial`; this.ctx.fillText(ft.text, ft.x, ft.y); this.ctx.restore();
         }
-
-        this.ctx.restore();
-        this.ctx.restore();
+        this.ctx.restore(); this.ctx.restore();
     }
 }
