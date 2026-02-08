@@ -52,7 +52,6 @@ export class World {
             const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
             const progression = Math.min(1, currentHeightMeters / 10000);
 
-            // Check for checkpoint spawning
             if (currentHeightMeters >= this.nextCheckpointHeight) {
                 const gap = 150;
                 const y = this.highestPoint - gap;
@@ -85,7 +84,6 @@ export class World {
                 continue;
             }
 
-            // Normal platforms
             const gapMin = WORLD_CONFIG.SPAWN_GAP_MIN + (progression * 40);
             const gapMax = WORLD_CONFIG.SPAWN_GAP_MAX + (progression * 60);
             const gap = gapMin + Math.random() * (gapMax - gapMin);
@@ -117,37 +115,11 @@ export class World {
                 respawnTimer: 0
             });
 
-            // Collectibles
             const randColl = Math.random();
             if (randColl < 0.9) {
                 const dropX = x + pWidth / 2 - 20;
                 const dropY = y - 50;
-                const player = this.game.player;
-                const activePUs = (player && player.activePowerUps) ? player.activePowerUps : {};
-                const distanceSinceLastPU = Math.abs(this.lastPowerUpY - y) / 10;
-                let spawnedPowerUp = false;
-
-                if (distanceSinceLastPU >= 120 && !activePUs['jetpack']) {
-                    const forceSpawn = distanceSinceLastPU >= 300;
-                    const chanceSpawn = Math.random() < 0.2;
-
-                    if (forceSpawn || chanceSpawn) {
-                        const availableTypes = Object.keys(POWER_UPS).filter(key => !activePUs[POWER_UPS[key].id]);
-                        if (availableTypes.length > 0) {
-                            const randomKey = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-                            this.collectibles.push(new Collectible(dropX, dropY, POWER_UPS[randomKey].id));
-                            this.lastPowerUpY = y;
-                            spawnedPowerUp = true;
-                        }
-                    }
-                }
-
-                if (!spawnedPowerUp) {
-                    this.collectibles.push(new Collectible(dropX, dropY, "water"));
-                    if (Math.random() < 0.2) {
-                        this.collectibles.push(new Collectible(dropX + (Math.random() > 0.5 ? 25 : -25), dropY - 20, "water"));
-                    }
-                }
+                this.collectibles.push(new Collectible(dropX, dropY, "water"));
             }
 
             this.highestPoint = y;
@@ -155,58 +127,36 @@ export class World {
     }
 
     update() {
-        const heightMeters = Math.max(0, Math.floor((this.game.height - this.game.player.y - this.game.player.height) / 10));
-
-        if (heightMeters >= 300 && heightMeters < 450) {
-            this.windTimer += 0.02;
-            this.wind = Math.sin(this.windTimer);
-        } else {
-            this.wind *= 0.95;
-        }
-
         let topY = this.game.height;
         for (const p of this.platforms) {
             if (p.y < topY) topY = p.y;
         }
-
         if (topY > this.game.camera.y - this.game.height * 2) {
             this.highestPoint = topY;
             this.generatePlatforms();
         }
-
-        const now = performance.now();
-        for (const p of this.platforms) {
-            if (p.type === "red") {
-                if (p.active) {
-                    if (p.timer > 0 && now > p.timer) {
-                        p.active = false;
-                        p.respawnTimer = now + 1000;
-                        p.timer = 0;
-                    }
-                } else {
-                    if (now > p.respawnTimer) {
-                        p.active = true;
-                        p.timer = 0;
-                    }
-                }
-            }
-        }
-
         this.collectibles.forEach(c => c.update(1 / 60));
         this.platforms = this.platforms.filter(p => p.isCheckpoint || p.y < this.game.camera.y + this.game.height + 600);
         this.collectibles = this.collectibles.filter(c => c.active && c.y < this.game.camera.y + this.game.height);
     }
 
     updateReachedCheckpoint(platform) {
-        // DETECT FALLING BACK TO AN OLD CHECKPOINT
-        // (y is greater because it's further down the screen)
+        // PREVENT REPEATED TRIGGERING
+        if (platform.id === this.lastReachedCheckpoint.id) return;
+
+        // DETECT FALLING BACK
         if (platform.y > this.lastReachedCheckpoint.y) {
-            // Player fell back to a checkpoint they already visited
+            this.lastReachedCheckpoint = {
+                x: platform.x,
+                y: platform.y,
+                width: platform.width,
+                id: platform.id
+            };
             this.game.triggerRegenerationSequence();
             return;
         }
 
-        // DETECT NEW RECORD CHECKPOINT
+        // NEW RECORD
         if (platform.y < this.lastReachedCheckpoint.y) {
             this.lastReachedCheckpoint = {
                 x: platform.x,
@@ -230,63 +180,39 @@ export class World {
     }
 
     regenerate() {
-        // Core logic to wipe and rebuild
         this.platforms = this.platforms.filter(p => p.isCheckpoint);
         this.highestPoint = this.lastReachedCheckpoint.y;
-
         const currentHeightMeters = Math.max(0, Math.floor((this.game.height - this.highestPoint) / 10));
         const interval = this.getNextCheckpointInterval(currentHeightMeters);
         this.nextCheckpointHeight = (Math.floor(currentHeightMeters / interval) + 1) * interval;
-
         this.generatePlatforms();
-
-        for (let i = 0; i < 50; i++) {
-            this.game.particles.spawn(this.lastReachedCheckpoint.x + this.lastReachedCheckpoint.width / 2, this.lastReachedCheckpoint.y, "#ffd700", 10);
-        }
     }
 
     draw(ctx) {
         for (const p of this.platforms) {
             if (!p.active) continue;
-
             const depth = Math.max(0, Math.floor((this.game.height - p.y) / 10));
             let biome = BIOMES[0];
             for (let i = BIOMES.length - 1; i >= 0; i--) {
-                if (depth >= BIOMES[i].height) {
-                    biome = BIOMES[i];
-                    break;
-                }
+                if (depth >= BIOMES[i].height) { biome = BIOMES[i]; break; }
             }
-
             if (p.type === "brown") {
                 if (biome.name === "Sky") ctx.fillStyle = "#f0f8ff";
                 else if (biome.name === "Space") ctx.fillStyle = "#2f4f4f";
                 else ctx.fillStyle = "#8b4513";
-            } else if (p.type === "pink") {
-                ctx.fillStyle = "#ff00cc";
-            } else if (p.type === "blue") {
-                ctx.fillStyle = "#00ffff";
-            } else if (p.type === "red") {
-                ctx.fillStyle = "#ff4444";
-                if (p.timer > 0 && Math.floor(Date.now() / 50) % 2 === 0) {
-                    ctx.fillStyle = "#ffaaaa";
-                }
             } else if (p.type === "gold") {
                 ctx.fillStyle = "#ffd700";
                 ctx.shadowBlur = 10;
                 ctx.shadowColor = "#ffd700";
+            } else {
+                ctx.fillStyle = p.type === "pink" ? "#ff00cc" : p.type === "blue" ? "#00ffff" : "#ff4444";
             }
-
             ctx.fillRect(p.x, p.y, p.width, p.height);
-
             ctx.strokeStyle = p.type === "gold" ? "#ffffff" : "rgba(255,255,255,0.5)";
             ctx.lineWidth = p.type === "gold" ? 3 : 2;
             ctx.strokeRect(p.x, p.y, p.width, p.height);
             ctx.shadowBlur = 0;
         }
-
-        this.collectibles.forEach(c => {
-            if (c.active) c.draw(ctx);
-        });
+        this.collectibles.forEach(c => { if (c.active) c.draw(ctx); });
     }
 }
