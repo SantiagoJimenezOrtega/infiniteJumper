@@ -12,7 +12,11 @@ const urlsToCache = [
     '/src/game/Particles.js',
     '/src/game/Menu.js',
     '/src/game/TrajectoryPreview.js',
-    '/src/game/Constants.js'
+    '/src/game/Constants.js',
+    '/src/game/Background.js',
+    '/src/game/Collectible.js',
+    '/src/game/SoundManager.js',
+    '/vite.svg'
 ];
 
 self.addEventListener('install', event => {
